@@ -29,6 +29,14 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .ohlc,.averages{min-height:34px;display:flex;align-items:center;gap:4px 15px;flex-wrap:wrap;padding:6px 14px;color:#dbe5f8;font-size:11px;border-bottom:1px solid #243147}.ohlc b{color:#a3b3cc;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-weight:500;margin-right:4px}.ohlc time{color:#acc8f4}.averages:empty{display:none}
 .plot{height:clamp(480px,60vh,760px);position:relative;background:#0b121e}.plot canvas{display:block;width:100%;height:100%;touch-action:pan-y}.empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);pointer-events:none}.chart-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;border-top:1px solid #253248;padding:9px 14px;font-size:11px;color:var(--muted)}.chart-footer span:first-child{color:#bac9e0}.side{display:grid;grid-template-columns:1fr 1fr;gap:12px}.side-section{padding:12px 14px}.side-section h2,.scenarios h2{font-size:14px;font-weight:670}.section-heading{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:5px}.section-heading span{font-size:11px;color:var(--muted)}
 .plot canvas.dragging{cursor:grabbing;user-select:none}
+.scenario-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px 14px;padding:7px 14px;border-bottom:1px solid #243147}
+.scenario-toolbar:has(.scenario-choices:empty){display:none}
+.scenario-choices{display:flex;flex-wrap:wrap;gap:5px}
+.scenario-choices button{border:1px solid #344359;border-radius:6px;background:#172235;padding:4px 8px;font-size:12px}
+.scenario-choices button[aria-pressed=true]{border-color:var(--tone);color:var(--tone);background:#202d40}
+.scenario-meta{display:flex;flex-wrap:wrap;gap:5px 12px;font-size:11px;color:var(--muted)}
+.scenarios .paths{grid-template-columns:repeat(4,minmax(0,1fr))}
+.path.current{background:#1a293e}
 .trend{border-bottom:1px solid #273348;padding:8px 0}.trend:last-child{border-bottom:0;padding-bottom:0}.trend summary{display:grid;grid-template-columns:7px 15px minmax(0,1fr) auto;column-gap:7px;align-items:center;list-style:none;cursor:pointer}.trend summary::-webkit-details-marker{display:none}.trend summary:before{content:"›";color:#a5b5cd}.trend[open] summary:before{transform:rotate(90deg)}.swatch{width:15px;display:inline-block;border-top:2px solid var(--line);flex:none;vertical-align:middle}.trend-title{white-space:nowrap;font-size:12px;font-weight:630}.trend .value{font-size:12px;color:var(--line)}.trend-sub{grid-column:3/-1;margin-top:2px;font-size:11px;color:var(--muted)}.missing{color:var(--muted)}.touches{display:flex;flex-wrap:wrap;gap:5px;padding-top:8px}.touches button{background:#182638;border:1px solid #354760;border-radius:4px;padding:2px 5px;color:#ceddf5;font-size:10px}.touches button:hover{border-color:var(--accent)}
 .level-list,.cross-list{list-style:none;padding:0;margin:0}.level-list{display:flex;flex-wrap:wrap;gap:5px 20px;padding:8px 14px;border-top:1px solid #253248}.level-list:empty{display:none}.level-list li,.level-name{display:flex;align-items:center;gap:8px}.level-list li{font-size:12px}.level-list .value{color:var(--line);white-space:nowrap}.cross-list li{padding:3px 0}.cross-list button{display:flex;justify-content:space-between;gap:8px;width:100%;align-items:center;text-align:left;background:#172235;border:1px solid #2d3e58;border-radius:6px;padding:6px 7px;color:#dbe7fa;font-size:11px}.cross-list button:hover,.cross-list button[aria-pressed=true]{border-color:#819ed3;background:#233453}.cross-list .value{white-space:nowrap;color:#afcaff}.cross-list .missing{font-size:11px}
 .scenarios{padding:13px 14px 14px}.scenarios .section-heading{margin-bottom:8px}.paths{display:grid;grid-template-columns:1fr 1fr;gap:12px}.path{padding:10px 12px;border:1px solid #303d52;border-left:3px solid var(--tone);border-radius:7px;background:#121e2e}.path h3{font-size:13px;color:var(--tone);margin-bottom:4px}.path p{font-size:12px;color:#cfdbed}.path p+p{margin-top:4px}.path strong{color:var(--text);font-weight:630}.method{margin-top:13px;color:#a7b7cf;font-size:12px}.method summary{width:fit-content;cursor:pointer}.method p{margin-top:5px;max-width:105ch}
@@ -36,6 +44,8 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 @media(max-width:1050px){.head,main{padding-left:20px;padding-right:20px}.side-section{padding-left:11px;padding-right:11px}}
 @media(max-width:810px){.plot{height:clamp(390px,61vh,530px)}}
 @media(max-width:540px){.head,main{padding-left:12px;padding-right:12px}.head{padding-top:14px;padding-bottom:14px;gap:8px}h1{font-size:16px}.source{font-size:10px}.market-head{flex-direction:column;align-items:stretch;gap:12px}.search{flex-basis:auto;min-width:0}.side,.paths{grid-template-columns:1fr}.plot{height:390px}.toolbar{gap:6px 10px}.ohlc{gap:4px 9px}.chart-footer{font-size:10px}}
+@media(max-width:900px){.scenarios .paths{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){.scenarios .paths{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -63,6 +73,10 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
       </div>
       <div id="ohlc" class="ohlc"><span>开、高、低、收及成交量</span></div>
       <div id="averages" class="averages mono" aria-label="收盘价移动平均线"></div>
+      <div class="scenario-toolbar">
+        <div id="scenarioChoices" class="scenario-choices" role="group" aria-label="切换推演走势"></div>
+        <div class="scenario-meta"><span id="volumeStatus"></span><a href="#scenarioGuidance">操作参考 ↓</a></div>
+      </div>
       <div id="plot" class="plot">
         <canvas id="chart" tabindex="0" aria-label="日 K 线图。滚轮或触控板双指捏合缩放，按住拖动或双指左右滑动平移，双击恢复全图。用左右方向键查看日线，按 Escape 清除十字线。"></canvas>
         <p id="empty" class="empty">正在连接行情</p>
@@ -70,8 +84,8 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
       <ul id="levels" class="level-list" aria-label="支撑与压力"></ul>
       <div class="chart-footer"><span id="dateRange">—</span><span>滚轮或捏合缩放 · 按住拖动或双指滑动 · 双击复原</span><span>○ 历史触点　◇ 趋势线交叉　右侧 +N 为第 N 根日 K</span></div>
     </section>
-    <section class="panel scenarios" aria-label="未来条件路径">
-      <div class="section-heading"><h2>未来条件路径</h2><span>以连续两根已收盘日 K 确认为观察条件</span></div>
+    <section id="scenarioGuidance" class="panel scenarios" aria-label="未来条件路径">
+      <div class="section-heading"><h2>走势条件与操作参考</h2><span>价位按最新日 K 计算，路径横轴表示先后顺序</span></div>
       <div id="paths" class="paths"></div>
     </section>
     <aside class="side" aria-label="趋势线与关键位置">
@@ -101,10 +115,10 @@ const PRICE_AVERAGES = [
   { period: 60, color: '#67b8f1' }
 ];
 const VOLUME_AVERAGES = PRICE_AVERAGES.slice(0, 2);
-const PATH_COLORS = { high: '#ff7780', low: '#f6d855' };
+const VOLUME_RULE = { high: 1.30, low: 0.80 };
 const state = {
   symbol: '1.600031', loadedSymbol: '', name: '', decimal: 2, allBars: [],
-  bars: [], trends: [], levels: [], crossings: [], paths: [], box: null,
+  bars: [], trends: [], levels: [], crossings: [], paths: [], box: null, scenarioKey: 'retest',
   hover: null, activeCross: null, view: null, chart: null, request: null
 };
 const price = value => value.toFixed(state.decimal);
@@ -115,7 +129,6 @@ const median = values => {
   return (sorted[(sorted.length - 1) >> 1] + sorted[sorted.length >> 1]) / 2;
 };
 const tolerance = (bar, value) => Math.max(0.007 * Math.abs(value), 0.54 * bar.atr, 0.01);
-const closeText = line => line.m ? '当日线值' : '该价位';
 
 function analyze(bars) {
   const n = bars.length;
@@ -299,16 +312,38 @@ function analyze(bars) {
     }
   }
   crossings.sort((a, b) => a.i - b.i);
-  const active = trends.concat(levels).filter(Boolean);
-  const paths = ['high', 'low'].map(side => {
-    const direction = side === 'high' ? 1 : -1;
-    const candidates = active.filter(line => line.side === side && direction * (lineAt(line, last) - close) > 0)
-      .sort((a, b) => direction * (lineAt(a, last) - lineAt(b, last)));
-    const trigger = candidates[0];
-    const next = candidates.find(line => trigger &&
-      direction * (lineAt(line, last) - lineAt(trigger, last)) > tolerance(bars[last], close));
-    return { side, trigger, next };
-  });
+  const active = trends.concat(levels, box && { ...box.top, name: '箱体上沿', side: 'high' }).filter(Boolean);
+  const prices = active.map(line => ({ value: Number(price(lineAt(line, last))), name: line.name, side: line.side }));
+  const supports = prices.filter(point => point.side === 'low' && point.value > 0 && point.value <= close)
+    .sort((a, b) => b.value - a.value);
+  const resistances = prices.filter(point => point.side === 'high' && point.value >= close)
+    .sort((a, b) => a.value - b.value);
+  const [support] = supports;
+  const [resistance] = resistances;
+  const nextSupport = support && supports.concat(below.map(line => ({ value: line.b, name: '历史支撑位' })))
+    .sort((a, b) => b.value - a.value)
+    .find(point => point.value > 0 && support.value - point.value > tolerance(bars[last], close));
+  const nextResistance = resistance && resistances.concat(above.map(line => ({ value: line.b, name: '历史压力位' })))
+    .sort((a, b) => a.value - b.value)
+    .find(point => point.value - resistance.value > tolerance(bars[last], close));
+  const insideBox = box && close >= box.bottom.b && close <= box.top.b;
+  const bandLow = insideBox ? box.bottom.b : support?.value;
+  const bandHigh = insideBox ? box.top.b : resistance?.value;
+  const range = bandHigh - bandLow >= Math.max(Math.abs(close) * 0.003, atr * 0.25, 0.01) ? [bandLow, bandHigh] : null;
+  const paths = [
+    { key: 'retest', name: '缩量回踩', color: '#7ad9cb', points: support ? [
+      { label: '回踩', value: support.value }, { label: '反弹观察', value: resistance?.value > close ? resistance.value : close }
+    ] : [], support, nextSupport, resistance },
+    { key: 'breakout', name: '放量突破', color: '#ff7780', points: resistance ? [
+      { label: '上破', value: resistance.value }, ...(nextResistance ? [{ label: '下一压力', value: nextResistance.value }] : [])
+    ] : [], resistance, nextResistance },
+    { key: 'range', name: '区间震荡', color: '#a9a3ff', points: range ? [
+      { label: '下沿', value: range[0] }, { label: '上沿', value: range[1] }, { label: '再测下沿', value: range[0] }
+    ] : [], range },
+    { key: 'breakdown', name: '放量跌破', color: '#f6d855', points: support ? [
+      { label: '跌破', value: support.value }, ...(nextSupport ? [{ label: '下一支撑', value: nextSupport.value }] : [])
+    ] : [], support, nextSupport }
+  ];
   return { trends, levels, box, crossings, paths };
 }
 
@@ -466,6 +501,9 @@ function applyWindow() {
   state.activeCross = null;
   state.view = null;
   Object.assign(state, analyze(state.bars));
+  if (!state.paths.find(path => path.key === state.scenarioKey)?.points.length) {
+    state.scenarioKey = state.paths.find(path => path.points.length)?.key ?? 'retest';
+  }
   const latest = state.bars.at(-1);
   const previous = state.bars.at(-2);
   $('lastPrice').textContent = price(latest.close);
@@ -545,19 +583,67 @@ function renderNotes() {
       '</span><span class="' + (level ? 'value' : 'missing') + '">' + value + '</span></li>';
   }).join('');
   renderCrossings();
-  $('paths').innerHTML = state.paths.map(({ side, trigger, next }) => {
-    const isUp = side === 'high';
-    const verb = isUp ? '高于' : '低于';
-    const direction = isUp ? '上涨' : '下跌';
-    const triggerText = trigger
-      ? '<p>' + (isUp ? '突破' : '跌破') + '需连续两根日 K 收盘' + verb + '<strong>' + trigger.name + '</strong>' + closeText(trigger) +
-        '（当前 ' + price(lineAt(trigger, last)) + '）。</p>'
-      : '<p>当前价' + (isUp ? '上方' : '下方') + '无已确认的' + (isUp ? '压力位' : '支撑位') + '。</p>';
-    const nextText = next ? '<p>确认后观察 <strong>' + next.name + '</strong>（当前 ' + price(lineAt(next, last)) + '）。</p>' : '';
-    return '<article class="path" style="--tone:' + PATH_COLORS[side] + '"><h3>' +
-      (isUp ? '↗ ' : '↘ ') + direction + '路径</h3>' + triggerText + nextText + '</article>';
+  const latest = state.bars[last];
+  const baseline = state.allBars.at(-2)?.volumeMa[0];
+  const ratio = baseline > 0 ? latest.vol / baseline : null;
+  const localTime = new Date(Date.now() + 8 * 3600000).toISOString();
+  const pendingClose = latest.date === localTime.slice(0, 10) && localTime.slice(11, 16) < '15:30';
+  const volumeType = ratio >= VOLUME_RULE.high ? '放量' : ratio <= VOLUME_RULE.low ? '缩量' : '常量';
+  $('volumeStatus').textContent = ratio === null ? '历史量能不足' :
+    '最新量 / 前5日均量 ' + ratio.toFixed(2) + '× · ' + (pendingClose ? '盘中累计，收盘后确认' : volumeType);
+
+  $('scenarioChoices').innerHTML = state.paths.map(path =>
+    '<button type="button" data-path="' + path.key + '" style="--tone:' + path.color + '" aria-pressed="' +
+    (path.key === state.scenarioKey) + '"' + (path.points.length ? '' : ' disabled title="缺少参考价位"') + '>' + path.name + '</button>').join('');
+  const heavy = '首根越界日成交量 ≥ 前5日均量 ' + VOLUME_RULE.high.toFixed(2) + ' 倍';
+  const light = '回踩日成交量 ≤ 前5日均量 ' + VOLUME_RULE.low.toFixed(2) + ' 倍';
+  $('paths').innerHTML = state.paths.map(path => {
+    const { key, name, color, support, nextSupport, resistance, nextResistance, range } = path;
+    let condition = '历史数据中缺少可用的支撑或压力位，暂时观望。';
+    let action = '';
+    let amount = '';
+    if (key === 'retest' && support) {
+      condition = '回踩 ' + support.name + ' <strong>' + price(support.value) + '</strong> 附近，当日收盘收回该价位。';
+      if (nextSupport) condition += ' 失守后观察 ' + price(nextSupport.value) + '。';
+      amount = light;
+      action = '等缩量收回后再考虑分批试仓。若放量收破支撑，暂停加仓。';
+    }
+    if (key === 'breakout' && resistance) {
+      condition = '连续两根日 K 收在 ' + resistance.name + ' <strong>' + price(resistance.value) + '</strong> 上方。';
+      if (nextResistance) condition += ' 上方观察 ' + price(nextResistance.value) + '。';
+      amount = heavy;
+      action = '等第二根收盘或回踩站稳后再考虑跟进。若收回突破位下方，取消突破计划。';
+    }
+    if (key === 'range' && range) {
+      condition = '连续两根日 K 收在 <strong>' + range.map(price).join('–') + '</strong> 区间内。';
+      amount = '成交量低于前5日均量 ' + VOLUME_RULE.high.toFixed(2) + ' 倍';
+      action = '区间中部观望。靠近下沿等企稳，靠近上沿避免追高。放量离开区间后重新评估。';
+    }
+    if (key === 'breakdown' && support) {
+      condition = '连续两根日 K 收在 ' + support.name + ' <strong>' + price(support.value) + '</strong> 下方。';
+      if (nextSupport) condition += ' 下方观察 ' + price(nextSupport.value) + '。';
+      amount = heavy;
+      action = '暂停加仓，已有仓位按预设风控处理。等收回支撑后再评估。';
+    }
+    return '<article data-path="' + key + '" class="path' + (key === state.scenarioKey ? ' current' : '') +
+      '" style="--tone:' + color + '"><h3>' + name + '</h3><p>' + condition + '</p>' +
+      (amount ? '<p><strong>量能</strong> ' + amount + '</p><p><strong>操作参考</strong> ' + action + '</p>' : '') + '</article>';
   }).join('');
 }
+
+$('scenarioChoices').addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button || button.dataset.path === state.scenarioKey) return;
+  state.scenarioKey = button.dataset.path;
+  if (state.view?.end <= state.bars.length - 0.5) state.view = null;
+  for (const choice of $('scenarioChoices').children) {
+    choice.setAttribute('aria-pressed', String(choice === button));
+  }
+  for (const card of $('paths').children) {
+    card.classList.toggle('current', card.dataset.path === state.scenarioKey);
+  }
+  draw();
+});
 
 function renderCrossings() {
   const list = $('crossings');
@@ -652,6 +738,11 @@ function draw() {
   const { start: xStart, end: xEnd } = state.view ?? { start: -1, end: fullEnd };
   const step = (right - left) / (xEnd - xStart);
   const x = i => left + (i - xStart) * step;
+  const scenario = state.paths.find(path => path.key === state.scenarioKey);
+  const projected = scenario.points.map((point, index) => ({
+    ...point, i: last + horizon * (index + 1) / (scenario.points.length + 1)
+  }));
+  const visiblePoints = projected.filter(point => point.i >= xStart && point.i <= xEnd);
   const firstVisible = Math.max(0, Math.ceil(xStart - 0.5));
   const lastVisible = Math.min(last, Math.floor(xEnd + 0.5));
   const visibleBars = bars.slice(firstVisible, lastVisible + 1);
@@ -663,6 +754,7 @@ function draw() {
   const visibleCrosses = state.crossings.filter(cross => cross.i >= xStart && cross.i <= xEnd &&
     (cross === state.activeCross || (cross.value >= min - spread * 0.36 && cross.value <= max + spread * 0.36)));
   const rangeMarks = visibleCrosses.map(cross => cross.value);
+  rangeMarks.push(...visiblePoints.map(point => point.value));
   for (const bar of visibleBars) rangeMarks.push(...bar.ma.filter(value => value !== null));
   const lines = state.trends.concat(state.levels).filter(Boolean);
   for (const line of lines) {
@@ -809,33 +901,23 @@ function draw() {
     }
   }
 
-  const futureWidth = right - futureLeft;
-  if (futureWidth > 27 && horizon < 200) {
-    for (const { side, trigger, next } of state.paths) {
-      if (!trigger) continue;
-      const color = PATH_COLORS[side];
-      const direction = side === 'high' ? 1 : -1;
-      const firstI = last + Math.max(4, horizon * 0.26);
-      const nextI = last + horizon * 0.63;
-      const firstValue = lineAt(trigger, firstI);
-      if (direction * (firstValue - close) <= 0 || firstValue <= min || firstValue >= max) continue;
-      const ax = x(firstI), ay = y(firstValue);
-      const nextValue = next ? lineAt(next, nextI) : NaN;
-      const hasNextPoint = direction * (nextValue - firstValue) > 0 && nextValue > min && nextValue < max;
-      const bx = hasNextPoint ? x(nextI) : ax;
-      const by = hasNextPoint ? y(nextValue) : ay;
-      segment(x(last), y(close), ax, ay, color, 1.7, [5, 4]);
-      if (hasNextPoint) {
-        segment(ax, ay, bx, by, color, 1.7, [5, 4]);
-        ctx.beginPath();
-        ctx.arc(ax, ay, 3.4, 0, Math.PI * 2);
-        ctx.fillStyle = '#101e30';
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.2;
-        ctx.fill();
-        ctx.stroke();
+  if (xEnd > last) {
+    let previous = { i: last, value: close };
+    for (const point of projected) {
+      segment(x(previous.i), y(previous.value), x(point.i), y(point.value), scenario.color, 2, [5, 4]);
+      if (point === projected.at(-1)) {
+        arrowTip(x(previous.i), y(previous.value), x(point.i), y(point.value), scenario.color, 8);
       }
-      arrowTip(hasNextPoint ? ax : x(last), hasNextPoint ? ay : closeY, bx, by, color, 9);
+      previous = point;
+    }
+    for (const point of visiblePoints) {
+      ctx.beginPath();
+      ctx.arc(x(point.i), y(point.value), 3.7, 0, Math.PI * 2);
+      ctx.fillStyle = '#0b121e';
+      ctx.fill();
+      ctx.strokeStyle = scenario.color;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
     }
   }
 
@@ -877,33 +959,28 @@ function draw() {
       });
   };
 
-  if (w >= 900 && xStart <= last && xEnd > last && state.paths.some(path => path.trigger)) {
-    const rows = state.paths.filter(path => path.trigger).map(({ side, trigger, next }) => ({
-      label: side === 'high' ? '↗ 上破' : '↘ 下破',
-      value: price(lineAt(trigger, last)) + (next ? '   →   观察 ' + price(lineAt(next, last)) : ''),
-      color: PATH_COLORS[side]
-    }));
-    ctx.font = '600 13px "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    const box = { x: right - 227, y: top + 12, width: 215, height: 26 * rows.length + 8 };
-    if (!coversPrice(box)) {
-      labelBoxes.push(box);
-      ctx.beginPath();
-      ctx.roundRect(box.x, box.y, box.width, box.height, 8);
-      ctx.fillStyle = '#101a29f5';
-      ctx.fill();
-      ctx.strokeStyle = '#60728b';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      for (const [i, row] of rows.entries()) {
-        const baseline = box.y + 21 + i * 26;
-        if (i) segment(box.x + 10, baseline - 18, box.x + box.width - 10, baseline - 18, '#344258');
-        ctx.fillStyle = row.color;
-        ctx.fillText(row.label, box.x + 12, baseline);
-        ctx.fillStyle = '#e9eef8';
-        ctx.fillText(row.value, box.x + 69, baseline, box.width - 80);
-      }
-    }
+  ctx.font = axisFont;
+  ctx.textAlign = 'left';
+  for (const point of visiblePoints) {
+    const xp = x(point.i), yp = y(point.value);
+    const text = price(point.value);
+    const width = ctx.measureText(text).width + 9;
+    const lx = Math.min(w - width - 3, xp + 7);
+    const ly = [yp - 8, yp - 27, yp + 11].find(candidate => {
+      const box = { x: lx, y: candidate, width, height: 16 };
+      const coversClose = showClose && lx + width > right && Math.abs(candidate + 8 - closeY) < 20;
+      return candidate >= top && candidate + 16 <= priceBottom && !coversClose && !overlapsLabel(box);
+    });
+    if (ly === undefined) continue;
+    labelBoxes.push({ x: lx, y: ly, width, height: 16 });
+    if (Math.abs(ly + 8 - yp) > 2) segment(xp + 3, yp, lx, ly + 8, scenario.color);
+    ctx.fillStyle = '#182638';
+    ctx.fillRect(lx, ly, width, 16);
+    ctx.strokeStyle = scenario.color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(lx + 0.5, ly + 0.5, width - 1, 15);
+    ctx.fillStyle = scenario.color;
+    ctx.fillText(text, lx + 4, ly + 11.5);
   }
 
   const calloutPositions = [[0.42, -1], [0.23, 1], [0.70, 1], [0.20, 1]];
