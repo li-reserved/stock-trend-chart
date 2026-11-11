@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>四线趋势推演 · A 股日线</title>
+<style>
+:root{color-scheme:dark;--bg:#0a101a;--panel:#111a27;--border:#273348;--text:#e9eef8;--muted:#a1b0c5;--faint:#8191ab;--accent:#8eb5ff;--up:#ff747b;--down:#49d9ae;--red:#ffa281;--channel:#70b6ff;--rise:#61d9c2;--support:#f4ca78;--pressure:#b8a0fa;--box:#8eaddc}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 "Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+button,input,select{font:inherit}button,select{color:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,summary:focus-visible,canvas:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}.mono,.price,output,.ohlc,.value,.hit-index{font-family:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;font-variant-numeric:tabular-nums}
+header{border-bottom:1px solid #202b3c;background:#0c1420}.head{max-width:1600px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:21px 34px}
+.brand{display:flex;align-items:center;gap:12px}.mark{width:35px;height:35px;border:1px solid #395987;border-radius:9px;background:#1b304e;display:grid;place-items:center}.mark i{height:14px;width:19px;border-left:2px solid #789ccf;border-bottom:2px solid #789ccf;position:relative}.mark i:after{content:"";position:absolute;left:3px;right:0;top:1px;height:9px;background:#a7c9ff;clip-path:polygon(0 83%,33% 38%,55% 65%,92% 0,100% 16%,60% 92%,34% 66%,0 100%)}
+h1,h2,h3,p{margin:0}h1{font-size:19px;letter-spacing:.025em;font-weight:680}.source{white-space:nowrap;color:var(--muted);font-size:12px}.source:before{display:inline-block;content:"";width:6px;height:6px;background:#6dbbff;border-radius:50%;margin-right:8px;vertical-align:2px}
+main{max-width:1600px;margin:auto;padding:25px 34px 34px}.market-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:18px}.search{display:flex;gap:8px;position:relative;flex:0 1 360px;min-width:260px;margin-bottom:3px;z-index:3}.search input{color:var(--text);width:100%;min-width:0;background:#101a29;border:1px solid #34435b;border-radius:8px;padding:9px 12px}.search input::placeholder{color:#99aac4}.search button[type=submit]{border:1px solid #4b71b0;border-radius:8px;background:#213d64;white-space:nowrap;padding:8px 16px}.search button[type=submit]:hover{background:#2c4e7c}
+.results{position:absolute;top:calc(100% + 6px);left:0;right:0;padding:4px;border:1px solid #42536e;border-radius:8px;background:#152033;box-shadow:0 12px 25px #0007}.results button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 10px;background:none;border:0;border-radius:5px;text-align:left}.results button:hover,.results button:focus{background:#233654}.results p{padding:10px;color:var(--muted)}
+.security{min-width:0}.identity,.quote{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.identity h2{font-size:23px;font-weight:680;letter-spacing:.035em}.code,.meta{font-size:12px;color:var(--muted)}.price{font-size:31px;line-height:1.25;font-weight:600;letter-spacing:-.04em}.change{font-size:13px;font-weight:600}.up{color:var(--up)}.down{color:var(--down)}.quote{margin-top:5px}.status{padding:9px 13px;border-radius:7px;background:#192743;color:#b9d1ff;margin-bottom:12px}.status.error{background:#3a242c;color:#ffd2d6}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 302px;gap:15px;align-items:start}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;min-width:0}.chart-panel{overflow:hidden}
+.toolbar{min-height:54px;padding:9px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;border-bottom:1px solid #243147}.controls{display:flex;align-items:center;gap:7px}.controls label,.toolbar-name{font-size:12px;color:var(--muted)}.toolbar-name{font-size:13px;color:var(--text);font-weight:650;white-space:nowrap}.controls select{background:#192436;border:1px solid #344359;border-radius:6px;padding:3px 6px;font-size:12px}
+.fullscreen-button{margin-left:auto;padding:4px 10px;border:1px solid #344359;border-radius:6px;background:#192436;font-size:12px;white-space:nowrap}.fullscreen-button:hover{background:#25354c}
+.fullscreen-stock{display:none;color:var(--muted)}
+.chart-panel:is(:fullscreen,.fullscreen-in-page){display:flex;flex-direction:column;width:100%;height:100%;border:0;border-radius:0;overflow:auto}
+.chart-panel:is(:fullscreen,.fullscreen-in-page) .plot{flex:1 0 180px;height:auto}
+.chart-panel:is(:fullscreen,.fullscreen-in-page)>:not(.plot){flex:none}
+.chart-panel:is(:fullscreen,.fullscreen-in-page) .fullscreen-stock{display:inline}
+.chart-panel.fullscreen-in-page{position:fixed;inset:0;z-index:10}
+body:has(.fullscreen-in-page){overflow:hidden}
+body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout),.layout:has(.fullscreen-in-page)>.side{visibility:hidden}
+.ohlc{min-height:37px;display:flex;align-items:center;gap:8px 15px;flex-wrap:wrap;padding:7px 14px;color:#dbe5f8;font-size:11px;border-bottom:1px solid #243147}.ohlc b{color:#a3b3cc;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;font-weight:500;margin-right:4px}.ohlc time{color:#acc8f4}
+.plot{height:clamp(420px,49vh,570px);position:relative;background:#0e1724}.plot canvas{display:block;width:100%;height:100%;touch-action:pan-y}.empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);pointer-events:none}.chart-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;border-top:1px solid #253248;padding:9px 14px;font-size:11px;color:var(--muted)}.chart-footer span:first-child{color:#bac9e0}.side{display:grid;gap:12px}.side-section{padding:12px 14px}.side-section h2,.scenarios h2{font-size:14px;font-weight:670}.section-heading{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:5px}.section-heading span{font-size:11px;color:var(--muted)}
+.plot canvas.dragging{cursor:grabbing;user-select:none}
+.trend{border-bottom:1px solid #273348;padding:8px 0}.trend:last-child{border-bottom:0;padding-bottom:0}.trend summary{display:grid;grid-template-columns:7px 15px minmax(0,1fr) auto;column-gap:7px;align-items:center;list-style:none;cursor:pointer}.trend summary::-webkit-details-marker{display:none}.trend summary:before{content:"›";color:#a5b5cd}.trend[open] summary:before{transform:rotate(90deg)}.swatch{width:15px;display:inline-block;border-top:2px solid var(--line);flex:none;vertical-align:middle}.trend-title{white-space:nowrap;font-size:12px;font-weight:630}.trend .value{font-size:12px;color:var(--line)}.trend-sub{grid-column:3/-1;margin-top:2px;font-size:11px;color:var(--muted)}.missing{color:var(--muted)}.touches{display:flex;flex-wrap:wrap;gap:5px;padding-top:8px}.touches button{background:#182638;border:1px solid #354760;border-radius:4px;padding:2px 5px;color:#ceddf5;font-size:10px}.touches button:hover{border-color:var(--accent)}
+.level-list,.cross-list{list-style:none;padding:0;margin:0}.level-list{display:flex;flex-wrap:wrap;gap:5px 20px;padding:8px 14px;border-top:1px solid #253248}.level-list:empty{display:none}.level-list li,.level-name{display:flex;align-items:center;gap:8px}.level-list li{font-size:12px}.level-list .value{color:var(--line);white-space:nowrap}.cross-list li{padding:3px 0}.cross-list button{display:flex;justify-content:space-between;gap:8px;width:100%;align-items:center;text-align:left;background:#172235;border:1px solid #2d3e58;border-radius:6px;padding:6px 7px;color:#dbe7fa;font-size:11px}.cross-list button:hover,.cross-list button[aria-pressed=true]{border-color:#819ed3;background:#233453}.cross-list .value{white-space:nowrap;color:#afcaff}.cross-list .missing{font-size:11px}
+.scenarios{margin-top:15px;padding:13px 14px 14px}.scenarios .section-heading{margin-bottom:8px}.paths{display:grid;grid-template-columns:1fr 1fr;gap:12px}.path{padding:10px 12px;border:1px solid #303d52;border-left:3px solid var(--tone);border-radius:7px;background:#121e2e}.path h3{font-size:13px;color:var(--tone);margin-bottom:4px}.path p{font-size:12px;color:#cfdbed}.path p+p{margin-top:4px}.path strong{color:var(--text);font-weight:630}.method{margin-top:13px;color:#a7b7cf;font-size:12px}.method summary{width:fit-content;cursor:pointer}.method p{margin-top:5px;max-width:105ch}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}[hidden]{display:none!important}
+@media(max-width:1050px){.head,main{padding-left:20px;padding-right:20px}.layout{grid-template-columns:minmax(0,1fr) 268px}.side-section{padding-left:11px;padding-right:11px}}
+@media(max-width:810px){.layout{grid-template-columns:1fr}.side{grid-template-columns:1fr 1fr}.plot{height:clamp(390px,61vh,530px)}}
+@media(max-width:540px){.head,main{padding-left:12px;padding-right:12px}.head{padding-top:14px;padding-bottom:14px;gap:8px}h1{font-size:16px}.source{font-size:10px}.market-head{flex-direction:column;align-items:stretch;gap:12px}.search{flex-basis:auto;min-width:0}.side,.paths{grid-template-columns:1fr}.plot{height:390px}.toolbar{gap:6px 10px}.ohlc{gap:4px 9px}.chart-footer{font-size:10px}}
+</style>
+</head>
+<body>
+<header><div class="head"><div class="brand"><span class="mark" aria-hidden="true"><i></i></span><h1>四线趋势推演</h1></div><a class="source" href="https://quote.eastmoney.com/" target="_blank" rel="noopener">东方财富行情</a></div></header>
+<main>
+  <div class="market-head">
+    <section class="security" aria-label="当前股票">
+      <div class="identity"><h2 id="stockName">A 股日线</h2><span id="stockCode" class="code mono"></span></div>
+      <div class="quote"><span id="lastPrice" class="price">—</span><span id="priceChange" class="change mono"></span><span id="lastDate" class="meta"></span></div>
+    </section>
+    <form id="search" class="search" autocomplete="off">
+      <label for="query" class="sr-only">搜索 A 股</label><input id="query" maxlength="32" placeholder="股票代码、简称或拼音首字母" aria-controls="results"><button type="submit">搜索</button>
+      <div id="results" class="results" aria-label="股票搜索结果" aria-live="polite" hidden></div>
+    </form>
+  </div>
+  <p id="status" class="status" role="status" hidden></p>
+  <div class="layout">
+    <section id="chartPanel" class="panel chart-panel" aria-label="K 线与四线推演">
+      <div class="toolbar">
+        <span class="toolbar-name"><span id="fullscreenStock" class="fullscreen-stock"></span>日 K · 成交量</span>
+        <div class="controls"><label for="windowSize">分析区间</label><select id="windowSize"><option value="180">180 根</option><option value="360" selected>360 根</option><option value="500">500 根</option></select></div>
+        <div class="controls"><label for="adjust">价格</label><select id="adjust"><option value="0">不复权</option><option value="1">前复权</option></select></div>
+        <div class="controls"><label for="projection">向右延伸</label><select id="projection"><option value="30" selected>30 根</option><option value="60">60 根</option><option value="120">120 根</option></select></div>
+        <button type="button" id="fullscreenButton" class="fullscreen-button" aria-controls="chartPanel">全屏</button>
+      </div>
+      <div id="ohlc" class="ohlc"><span>开、高、低、收及成交量</span></div>
+      <div id="plot" class="plot">
+        <canvas id="chart" tabindex="0" aria-label="日 K 线图。滚轮或触控板双指捏合缩放，按住拖动或双指左右滑动平移，双击恢复全图。用左右方向键查看日线，按 Escape 清除十字线。"></canvas>
+        <p id="empty" class="empty">正在连接行情</p>
+      </div>
+      <ul id="levels" class="level-list" aria-label="支撑与压力"></ul>
+      <div class="chart-footer"><span id="dateRange">—</span><span>滚轮或捏合缩放 · 按住拖动或双指滑动 · 双击复原</span><span>○ 历史触点　◇ 趋势线交叉　右侧 +N 为第 N 根日 K</span></div>
+    </section>
+    <aside class="side" aria-label="趋势线与关键位置">
+      <section class="panel side-section"><div class="section-heading"><h2>四条趋势线</h2><span>最新 K 线对应价</span></div><div id="trends"></div></section>
+      <section class="panel side-section"><div class="section-heading"><h2>趋势线交叉</h2><span>距最新日 K</span></div><ul id="crossings" class="cross-list"></ul></section>
+    </aside>
+  </div>
+  <section class="panel scenarios" aria-label="未来条件路径">
+    <div class="section-heading"><h2>未来条件路径</h2><span>以连续两根已收盘日 K 确认为观察条件</span></div>
+    <div id="paths" class="paths"></div>
+  </section>
+  <details class="method"><summary>画线口径</summary><p>高低点取日 K 两侧各 4 根内的显著波段极值。趋势线以相隔足够远的历史触点确定斜率，优先选触点多、跨度长且在触点区间内较少被收盘穿越的线。下降通道下轨须与主降线平行并独立通过低点检验。横向价位由重复触及的高低点聚合，箱体还要求支撑和压力至少交替触及四次。触点容差结合历史真实波幅与股价比例计算。交叉按同一交易序号上的线值相等计算。箭头表示条件路径，盘中最新日 K 会随行情更新。</p></details>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const TREND_TYPES = [
+  { key: 'main', name: '主要下降趋势线', short: '主降', color: '#ffa281', side: 'high' },
+  { key: 'channel', name: '下降通道线', short: '通道', color: '#70b6ff', side: 'low' },
+  { key: 'rise', name: '上升趋势线', short: '上升', color: '#61d9c2', side: 'low' },
+  { key: 'key', name: '关键支撑线', short: '关键支撑', color: '#f4ca78', side: 'low' }
+];
+const LEVEL_TYPES = [
+  { key: 'box', name: '箱体支撑', color: '#8eaddc', side: 'low' },
+  { key: 'floor', name: '横向支撑', color: '#c4d78f', side: 'low' },
+  { key: 'pressure', name: '重要压力位', color: '#b8a0fa', side: 'high' }
+];
+const state = {
+  symbol: '1.600031', loadedSymbol: '', name: '', decimal: 2, allBars: [],
+  bars: [], trends: [], levels: [], crossings: [], paths: [], box: null,
+  hover: null, activeCross: null, view: null, chart: null, request: null
+};
+const price = value => value.toFixed(state.decimal);
+const volume = value => value >= 10000 ? (value / 10000).toFixed(2) + ' 万手' : value.toLocaleString('zh-CN') + ' 手';
+const lineAt = (line, i) => line.b + line.m * i;
+const median = values => {
+  const sorted = values.slice().sort((a, b) => a - b);
+  return (sorted[(sorted.length - 1) >> 1] + sorted[sorted.length >> 1]) / 2;
+};
+const tolerance = (bar, value) => Math.max(0.007 * Math.abs(value), 0.54 * bar.atr, 0.01);
+const closeText = line => line.m ? '当日线值' : '该价位';
+
+function analyze(bars) {
+  const n = bars.length;
+  const last = n - 1;
+  const close = bars[last].close;
+  const atr = bars[last].atr;
+  const minSpan = Math.max(23, Math.round(n * 0.16));
+  const gap = Math.max(7, Math.floor(n * 0.027));
+  const pivotRadius = 4;
+  const pivots = { high: [], low: [] };
+  for (let i = pivotRadius; i < n - pivotRadius; i++) {
+    const window = bars.slice(i - pivotRadius, i + pivotRadius + 1);
+    for (const side of ['high', 'low']) {
+      const isHigh = side === 'high';
+      const value = bars[i][side];
+      const extreme = window.every(bar => isHigh ? bar.high <= value : bar.low >= value);
+      const prominence = Math.min(
+        ...[window.slice(0, pivotRadius), window.slice(pivotRadius + 1)].map(half =>
+          Math.max(...half.map(bar => isHigh ? value - bar.low : bar.high - value)))
+      );
+      if (extreme && prominence >= bars[i].atr * 0.8 && window.findIndex(bar => bar[side] === value) === pivotRadius) {
+        pivots[side].push({ i, value });
+      }
+    }
+  }
+
+  function contacts(points, m, b) {
+    const found = [];
+    for (const point of points) {
+      const deviation = Math.abs(point.value - (b + m * point.i));
+      const error = deviation / tolerance(bars[point.i], point.value);
+      if (error > 1) continue;
+      const previous = found.at(-1);
+      if (previous && point.i - previous.i < gap) {
+        if (error < previous.error) found[found.length - 1] = { ...point, error };
+      } else {
+        found.push({ ...point, error });
+      }
+    }
+    return found;
+  }
+
+  function assess(points, m, b, side, spanRequired) {
+    const touches = contacts(points, m, b);
+    if (touches.length < 2) return null;
+    const start = touches[0].i;
+    const end = touches.at(-1).i;
+    const span = end - start;
+    if (span < spanRequired) return null;
+    let violations = 0;
+    let wickViolations = 0;
+    for (let i = start; i <= end; i++) {
+      const bar = bars[i];
+      const y = b + m * i;
+      const sign = side === 'high' ? 1 : -1;
+      const band = tolerance(bar, y);
+      if (sign * (bar.close - y) > band) violations++;
+      if (sign * (bar[side] - y) > band * 1.7) wickViolations++;
+    }
+    if (violations / (span + 1) > 0.12 || wickViolations / (span + 1) > 0.20) return null;
+    const fit = touches.reduce((sum, point) => sum + 1 - point.error, 0);
+    const distance = Math.abs(b + m * last - close) / Math.max(atr, 0.01);
+    const score = touches.length * 2.1 + fit * 0.65 + span / n * 8 + end / n * 4
+      - (violations * 2 + wickViolations) / (span + 1) * 9 - Math.min(distance, 24) * 0.12;
+    return { m, b, start, end, touches, score };
+  }
+
+  function sloped(side, direction) {
+    const points = pivots[side];
+    const candidates = [];
+    for (let a = 0; a < points.length; a++) {
+      for (let z = a + 1; z < points.length; z++) {
+        const first = points[a], second = points[z];
+        const span = second.i - first.i;
+        if (span < minSpan || direction * (second.value - first.value) < 1.1 * (bars[first.i].atr + bars[second.i].atr) / 2) continue;
+        const m = (second.value - first.value) / span;
+        const b = first.value - m * first.i;
+        const candidate = assess(points, m, b, side, minSpan);
+        if (candidate) candidates.push(candidate);
+      }
+    }
+    return candidates.sort((a, b) => b.score - a.score);
+  }
+
+  function horizontal(side) {
+    const points = pivots[side];
+    const bands = [];
+    for (const point of points) {
+      const matches = contacts(points, 0, point.value);
+      if (matches.length < 2) continue;
+      const b = Number(price(median(matches.map(item => item.value))));
+      const touches = contacts(points, 0, b);
+      if (touches.length < 2) continue;
+      const start = touches[0].i, end = touches.at(-1).i;
+      if (end - start < Math.max(14, gap * 2)) continue;
+      const score = touches.length * 2.6 + end / n * 4 + (end - start) / n * 2
+        + touches.reduce((sum, item) => sum + 1 - item.error, 0) * 0.6
+        - Math.min(Math.abs(b - close) / Math.max(atr, 0.01), 30) * 0.22;
+      bands.push({ m: 0, b, touches, start, end, score });
+    }
+    const ranked = [];
+    for (const band of bands.sort((a, b) => b.score - a.score)) {
+      if (ranked.every(other => Math.abs(band.b - other.b) > tolerance(bars[last], band.b))) ranked.push(band);
+    }
+    return ranked;
+  }
+
+  const descending = sloped('high', -1);
+  let main = descending[0] || null;
+  let channel = null;
+  for (const upper of descending.slice(0, 12)) {
+    if (upper.score < main.score * 0.85) break;
+    const points = pivots.low.filter(point => point.i >= upper.start);
+    let lower = null;
+    for (const point of points) {
+      const b = point.value - upper.m * point.i;
+      if (upper.b - b < 1.5 * bars[point.i].atr) continue;
+      const candidate = assess(points, upper.m, b, 'low', Math.max(20, Math.round(minSpan * 0.75)));
+      if (!candidate) continue;
+      const overlap = Math.min(candidate.end, upper.end) - Math.max(candidate.start, upper.start);
+      if (overlap >= Math.max(14, minSpan * 0.4) && (!lower || candidate.score > lower.score)) lower = candidate;
+    }
+    if (lower) {
+      main = upper;
+      channel = lower;
+      break;
+    }
+  }
+  const lows = horizontal('low');
+  const highs = horizontal('high');
+  const below = lows.filter(level => level.b <= close);
+  const above = highs.filter(level => level.b >= close);
+  const key = below[0] || lows[0] || null;
+  const pressure = above[0] || highs[0] || null;
+
+  let box = null;
+  for (const bottom of lows) {
+    for (const top of highs) {
+      if (top.b - bottom.b < Math.max(2 * atr, close * 0.025)) continue;
+      const hits = bottom.touches.map(point => ({ i: point.i, side: 'low' }))
+        .concat(top.touches.map(point => ({ i: point.i, side: 'high' }))).sort((a, b) => a.i - b.i);
+      for (let a = 0; a < hits.length - 3; a++) {
+        let alternations = 1;
+        for (let z = a + 1; z < hits.length; z++) {
+          if (hits[z].side !== hits[z - 1].side && hits[z].i > hits[z - 1].i) alternations++;
+          const start = hits[a].i, end = hits[z].i;
+          if (alternations < 4 || end - start < Math.max(23, gap * 2)) continue;
+          let outside = 0, streak = 0, longestStreak = 0;
+          for (let i = start; i <= end; i++) {
+            const bar = bars[i];
+            if (bar.close < bottom.b - tolerance(bar, bottom.b) || bar.close > top.b + tolerance(bar, top.b)) {
+              outside++;
+              streak++;
+              longestStreak = Math.max(streak, longestStreak);
+            } else {
+              streak = 0;
+            }
+          }
+          if (outside / (end - start + 1) > 0.15 || longestStreak >= 6) continue;
+          const score = alternations * 1.1 + end / n * 7 + (end - start) / n * 2
+            - Math.min(Math.abs(bottom.b - close) / Math.max(atr, 0.01), 25) * 0.16;
+          if (!box || score > box.score) box = { bottom, top, start, end, score };
+        }
+      }
+    }
+  }
+
+  const floors = below.filter(level => level !== key).sort((a, b) => b.b - a.b);
+  const floor = floors.find(level => level !== box?.bottom) || floors[0] || null;
+  const trends = [main, channel, sloped('low', 1)[0] || null, key].map((line, i) => line && { ...line, ...TREND_TYPES[i] });
+  const levels = [box && { ...box.bottom, start: box.start, end: box.end }, floor, pressure]
+    .map((line, i) => line && { ...line, ...LEVEL_TYPES[i] });
+  const crossings = [];
+  for (let a = 0; a < trends.length; a++) {
+    for (let z = a + 1; z < trends.length; z++) {
+      const first = trends[a], second = trends[z];
+      if (!first || !second || Math.abs(first.m - second.m) < 1e-9) continue;
+      const i = (second.b - first.b) / (first.m - second.m);
+      const value = lineAt(first, i);
+      if (i >= Math.max(first.start, second.start) && value > 0) crossings.push({ i, value, first, second });
+    }
+  }
+  crossings.sort((a, b) => a.i - b.i);
+  const active = trends.concat(levels).filter(Boolean);
+  const paths = ['high', 'low'].map(side => {
+    const direction = side === 'high' ? 1 : -1;
+    const candidates = active.filter(line => line.side === side && direction * (lineAt(line, last) - close) > 0)
+      .sort((a, b) => direction * (lineAt(a, last) - lineAt(b, last)));
+    const trigger = candidates[0];
+    const next = candidates.find(line => trigger &&
+      direction * (lineAt(line, last) - lineAt(trigger, last)) > tolerance(bars[last], close));
+    return { side, trigger, next };
+  });
+  return { trends, levels, box, crossings, paths };
+}
+
+let searchVersion = 0;
+let searchTimer;
+function hideResults() {
+  $('results').hidden = true;
+}
+function suggest(query, version) {
+  return new Promise((resolve, reject) => {
+    const callback = 'stockSearch_' + version;
+    const script = document.createElement('script');
+    const url = new URL('https://searchapi.eastmoney.com/api/suggest/get');
+    url.search = new URLSearchParams({ input: query, type: '14', count: '20', cb: callback });
+    const timer = setTimeout(() => finish(new Error('搜索超时，请重试')), 9000);
+    function finish(error, result) {
+      clearTimeout(timer);
+      delete window[callback];
+      script.remove();
+      if (error) reject(error);
+      else resolve(result);
+    }
+    window[callback] = result => finish(null, result);
+    script.onerror = () => finish(new Error('搜索接口暂时无法连接'));
+    script.src = url;
+    document.head.append(script);
+  });
+}
+async function findStocks(query, direct, version) {
+  $('results').innerHTML = '<p>正在搜索…</p>';
+  $('results').hidden = false;
+  let matches;
+  try {
+    const payload = await suggest(query, version);
+    if (version !== searchVersion) return;
+    const table = payload.QuotationCodeTable;
+    if (!table || (table.Status !== 0 && table.TotalCount !== 0)) throw new Error('搜索接口返回异常，请重试');
+    matches = (table.Data || []).filter(row => ['沪A', '深A', '京A'].includes(row.SecurityTypeName)
+      && /^[01]\.\d{6}$/.test(row.QuoteID));
+  } catch (error) {
+    if (version === searchVersion) {
+      const message = document.createElement('p');
+      message.textContent = error.message;
+      $('results').replaceChildren(message);
+    }
+    return;
+  }
+  const exact = matches.find(row => row.Code === query || row.Name === query || row.PinYin === query.toUpperCase());
+  if (direct && (exact || matches.length === 1)) {
+    selectStock((exact || matches[0]).QuoteID);
+    return;
+  }
+  $('results').replaceChildren();
+  for (const row of matches) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    const title = document.createElement('span');
+    const code = document.createElement('span');
+    title.textContent = row.Name;
+    code.className = 'meta mono';
+    code.textContent = row.Code + ' · ' + row.SecurityTypeName;
+    button.append(title, code);
+    button.onclick = () => selectStock(row.QuoteID);
+    $('results').append(button);
+  }
+  if (!matches.length) $('results').innerHTML = '<p>未找到沪、深、北交所 A 股，请检查代码或简称。</p>';
+}
+function selectStock(symbol) {
+  searchVersion++;
+  clearTimeout(searchTimer);
+  hideResults();
+  loadStock(symbol);
+}
+function setStatus(message, error = false) {
+  $('status').textContent = message;
+  $('status').classList.toggle('error', error);
+  $('status').hidden = !message;
+}
+async function loadStock(symbol) {
+  state.symbol = symbol;
+  state.request?.abort();
+  const request = new AbortController();
+  state.request = request;
+  const adjustment = $('adjust').value;
+  const url = new URL('https://push2his.eastmoney.com/api/qt/stock/kline/get');
+  url.search = new URLSearchParams({
+    secid: symbol, fields1: 'f1,f2,f3,f4,f5,f6', fields2: 'f51,f52,f53,f54,f55,f56',
+    klt: '101', fqt: adjustment, end: '20500101', lmt: '500'
+  });
+  setStatus('正在加载 ' + symbol.slice(2) + ' 的日线…');
+  let data, bars;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.any([request.signal, AbortSignal.timeout(11000)]) });
+    if (!response.ok) throw new Error('行情接口返回 HTTP ' + response.status);
+    const payload = await response.json();
+    if (state.request !== request) return;
+    data = payload.data;
+    if (payload.rc !== 0 || !data?.klines?.length) throw new Error('行情接口未返回日线');
+    bars = data.klines.map(row => {
+      const [date, ...values] = row.split(',');
+      const [open, close, high, low, vol] = values.map(value => value ? Number(value) : NaN);
+      return { date, open, close, high, low, vol };
+    });
+    let atr = bars[0].high - bars[0].low;
+    for (let i = 0; i < bars.length; i++) {
+      const bar = bars[i];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(bar.date) ||
+          ![bar.open, bar.close, bar.high, bar.low, bar.vol].every(Number.isFinite) ||
+          bar.high < Math.max(bar.open, bar.close) || bar.low > Math.min(bar.open, bar.close) ||
+          bar.vol < 0 || (i && bar.date <= bars[i - 1].date)) throw new Error('行情接口返回了无效日线');
+      const previous = i ? bars[i - 1].close : bar.open;
+      const range = Math.max(bar.high - bar.low, Math.abs(bar.high - previous), Math.abs(bar.low - previous));
+      atr = (atr * (Math.min(i + 1, 14) - 1) + range) / Math.min(i + 1, 14);
+      bar.atr = atr;
+    }
+  } catch (error) {
+    if (state.request !== request) return;
+    const detail = error.name === 'TimeoutError' ? '请求超时' : error.message === 'Failed to fetch' ? '无法连接东方财富行情' : error.message;
+    if (state.loadedSymbol) {
+      state.symbol = state.loadedSymbol;
+      $('adjust').value = state.loadedAdjustment;
+    }
+    setStatus(symbol.slice(2) + ' 加载失败。' + detail + (state.loadedSymbol ? '。图中仍显示 ' + state.name + '。' : '。可重新搜索或刷新页面。'), true);
+    if (!state.loadedSymbol) $('empty').textContent = '日线暂不可用';
+    return;
+  }
+  state.allBars = bars;
+  state.name = data.name;
+  state.decimal = Math.max(0, Math.min(4, data.decimal ?? 2));
+  state.loadedSymbol = symbol;
+  state.loadedAdjustment = adjustment;
+  $('query').value = '';
+  $('stockName').textContent = data.name;
+  $('fullscreenStock').textContent = data.name + ' · ';
+  $('stockCode').textContent = data.code + ' · ' + (data.market === 1 ? '沪市' : /^[489]/.test(data.code) ? '北交所' : '深市');
+  $('empty').hidden = true;
+  setStatus('');
+  applyWindow();
+}
+
+function applyWindow() {
+  if (!state.allBars.length) return;
+  state.bars = state.allBars.slice(-Number($('windowSize').value));
+  state.hover = null;
+  state.activeCross = null;
+  state.view = null;
+  Object.assign(state, analyze(state.bars));
+  const latest = state.bars.at(-1);
+  const previous = state.bars.at(-2);
+  $('lastPrice').textContent = price(latest.close);
+  $('lastDate').textContent = latest.date + ' · 最新日 K';
+  const change = $('priceChange');
+  change.textContent = '';
+  change.className = 'change mono';
+  if (previous && previous.close > 0) {
+    const diff = latest.close - previous.close;
+    const sign = diff > 0 ? '+' : '';
+    change.textContent = sign + price(diff) + '  ' + sign + (diff / previous.close * 100).toFixed(2) + '%';
+    change.classList.toggle('up', diff > 0);
+    change.classList.toggle('down', diff < 0);
+  }
+  $('dateRange').textContent = state.bars[0].date + ' — ' + latest.date + ' · ' + state.bars.length + ' 根日 K';
+  renderNotes();
+  renderOhlc();
+  draw();
+}
+
+function renderOhlc() {
+  const bar = state.bars[state.hover ?? state.bars.length - 1];
+  $('ohlc').innerHTML = '<time>' + bar.date + '</time>' + [
+    ['开', price(bar.open)], ['高', price(bar.high)], ['低', price(bar.low)], ['收', price(bar.close)], ['量', volume(bar.vol)]
+  ].map(([label, value]) => '<span><b>' + label + '</b>' + value + '</span>').join('');
+}
+
+function renderNotes() {
+  const last = state.bars.length - 1;
+  const close = state.bars[last].close;
+  $('trends').replaceChildren();
+  for (const [i, type] of TREND_TYPES.entries()) {
+    const line = state.trends[i];
+    const details = document.createElement('details');
+    details.className = 'trend';
+    details.style.setProperty('--line', type.color);
+    const summary = document.createElement('summary');
+    const sub = document.createElement('p');
+    sub.className = 'trend-sub';
+    summary.innerHTML = '<i class="swatch"></i><span class="trend-title">' + type.name + '</span><span class="value">' +
+      (line ? price(lineAt(line, last)) : '—') + '</span>';
+    summary.append(sub);
+    details.append(summary);
+    if (line) {
+      const broken = (close - lineAt(line, last)) * (line.side === 'high' ? 1 : -1) > tolerance(state.bars[last], close);
+      sub.textContent = line.touches.length + ' 个触点 · 跨 ' + (line.end - line.start) + ' 根' +
+        (broken ? line.side === 'high' ? ' · 最新价在线上' : ' · 最新价在线下' : '');
+      const touches = document.createElement('div');
+      touches.className = 'touches';
+      for (const point of line.touches) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = state.bars[point.i].date + ' ' + price(point.value);
+        button.onclick = () => {
+          if (state.view && (point.i < state.view.start || point.i > state.view.end)) state.view = null;
+          state.hover = point.i;
+          renderOhlc();
+          draw();
+        };
+        touches.append(button);
+      }
+      details.append(touches);
+    } else {
+      sub.textContent = type.key === 'channel' ? '缺少符合主降斜率的低点' : '有效历史触点不足';
+    }
+    $('trends').append(details);
+  }
+  $('levels').innerHTML = LEVEL_TYPES.map((type, i) => {
+    const level = state.levels[i];
+    const value = level ? price(level.b) + ' 元' : i === 1 && state.trends[3] ? '见关键支撑线' : '未确认';
+    return '<li style="--line:' + type.color + '"><span class="level-name"><i class="swatch"></i>' + type.name +
+      '</span><span class="' + (level ? 'value' : 'missing') + '">' + value + '</span></li>';
+  }).join('');
+  renderCrossings();
+  $('paths').innerHTML = state.paths.map(({ side, trigger, next }) => {
+    const isUp = side === 'high';
+    const verb = isUp ? '高于' : '低于';
+    const direction = isUp ? '上涨' : '下跌';
+    const triggerText = trigger
+      ? '<p>' + (isUp ? '突破' : '跌破') + '需连续两根日 K 收盘' + verb + '<strong>' + trigger.name + '</strong>' + closeText(trigger) +
+        '（当前 ' + price(lineAt(trigger, last)) + '）。</p>'
+      : '<p>当前价' + (isUp ? '上方' : '下方') + '无已确认的' + (isUp ? '压力位' : '支撑位') + '。</p>';
+    const nextText = next ? '<p>确认后观察 <strong>' + next.name + '</strong>（当前 ' + price(lineAt(next, last)) + '）。</p>' : '';
+    return '<article class="path" style="--tone:var(--' + (isUp ? 'up' : 'down') + ')"><h3>' +
+      (isUp ? '↗ ' : '↘ ') + direction + '路径</h3>' + triggerText + nextText + '</article>';
+  }).join('');
+}
+
+function renderCrossings() {
+  const list = $('crossings');
+  const last = state.bars.length - 1;
+  list.replaceChildren();
+  const entries = state.crossings.toSorted((a, b) =>
+    Number(b.i > last) - Number(a.i > last) || Math.abs(a.i - last) - Math.abs(b.i - last));
+  if (!entries.length) list.innerHTML = '<li class="missing">已确认的趋势线没有有效交叉。</li>';
+  for (const cross of entries) {
+    const row = document.createElement('li');
+    const button = document.createElement('button');
+    const isFuture = cross.i > last;
+    const when = isFuture ? '+' + (cross.i - last).toFixed(1) + ' 根' : state.bars[Math.round(cross.i)].date;
+    button.type = 'button';
+    button.setAttribute('aria-pressed', String(cross === state.activeCross));
+    button.setAttribute('aria-label', cross.first.name + '与' + cross.second.name + '交叉，' + when + '，' + price(cross.value) + ' 元');
+    button.innerHTML = '<span>' + cross.first.short + ' × ' + cross.second.short + '</span><span class="value">' +
+      when + ' · ' + price(cross.value) + '</span>';
+    button.onclick = () => {
+      state.activeCross = state.activeCross === cross ? null : cross;
+      state.view = null;
+      for (const item of list.querySelectorAll('button')) item.setAttribute('aria-pressed', String(item === button && !!state.activeCross));
+      state.hover = cross === state.activeCross && !isFuture ? Math.round(cross.i) : null;
+      renderOhlc();
+      draw();
+    };
+    row.append(button);
+    list.append(row);
+  }
+}
+
+const canvas = $('chart');
+const ctx = canvas.getContext('2d');
+const axisFont = '11px "IBM Plex Mono", Menlo, Consolas, monospace';
+const labelFont = '11px "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
+function segment(x1, y1, x2, y2, color, width = 1, dash = []) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+function draw() {
+  const { width: w, height: h } = canvas.getBoundingClientRect();
+  const scale = window.devicePixelRatio || 1;
+  if (canvas.width !== Math.round(w * scale) || canvas.height !== Math.round(h * scale)) {
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+  }
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  if (!state.bars.length) return;
+  const bars = state.bars;
+  const last = bars.length - 1;
+  const left = 12, top = 25, right = w - (w > 600 ? 74 : 62);
+  const priceBottom = h - 91, volTop = h - 80, volBottom = h - 29;
+  const lastX = last + 0.5;
+  const horizon = Math.max(Number($('projection').value), Math.ceil((state.activeCross?.i ?? 0) - last) + 6);
+  const fullEnd = last + horizon + 0.5;
+  const { start: xStart, end: xEnd } = state.view ?? { start: -1, end: fullEnd };
+  const step = (right - left) / (xEnd - xStart);
+  const x = i => left + (i - xStart) * step;
+  const firstVisible = Math.max(0, Math.ceil(xStart - 0.5));
+  const lastVisible = Math.min(last, Math.floor(xEnd + 0.5));
+  const visibleBars = bars.slice(firstVisible, lastVisible + 1);
+  const scaleBars = visibleBars.length ? visibleBars : bars.slice(-30);
+  const close = bars[last].close;
+  let min = Math.min(...scaleBars.map(bar => bar.low));
+  let max = Math.max(...scaleBars.map(bar => bar.high));
+  const spread = Math.max(max - min, Math.abs(scaleBars.at(-1).close) * 0.025, 0.02);
+  const visibleCrosses = state.crossings.filter(cross => cross.i >= xStart && cross.i <= xEnd &&
+    (cross === state.activeCross || (cross.value >= min - spread * 0.36 && cross.value <= max + spread * 0.36)));
+  const rangeMarks = visibleCrosses.map(cross => cross.value);
+  const lines = state.trends.concat(state.levels).filter(Boolean);
+  for (const line of lines) {
+    for (const index of [Math.max(xStart, Math.min(last, xEnd)), xEnd]) {
+      if (line.start > index) continue;
+      const value = lineAt(line, index);
+      if (value > 0 && value >= min - spread * 0.34 && value <= max + spread * 0.34) rangeMarks.push(value);
+    }
+  }
+  min = Math.min(min, ...rangeMarks) - spread * 0.07;
+  max = Math.max(max, ...rangeMarks) + spread * 0.08;
+  const roughTick = (max - min) / 6;
+  const power = 10 ** Math.floor(Math.log10(roughTick));
+  const tick = [1, 2, 2.5, 5, 10].find(unit => unit * power >= roughTick) * power;
+  const y = value => priceBottom - (value - min) / (max - min) * (priceBottom - top);
+  const closeY = y(close);
+  const showClose = last <= xEnd && closeY >= top && closeY <= priceBottom;
+  const maxVol = Math.max(1, ...scaleBars.map(bar => bar.vol));
+  const boundary = x(lastX);
+  const futureLeft = Math.max(left, boundary);
+  state.chart = { left, right, top, bottom: volBottom, step, boundary, xStart, xEnd, fullEnd, firstVisible, lastVisible };
+
+  ctx.fillStyle = '#101e30';
+  ctx.fillRect(futureLeft, top, Math.max(0, right - futureLeft), volBottom - top);
+  ctx.font = labelFont;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#a6b6ce';
+  if (Math.min(right, boundary) - left > 45) ctx.fillText('历史日 K', left + 3, 16);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#94add0';
+  if (right - futureLeft > 35) ctx.fillText('延伸区', right - 4, 16);
+  ctx.font = axisFont;
+  ctx.fillStyle = '#9dacbf';
+  ctx.fillText('CNY', w - 10, 16);
+  ctx.textAlign = 'left';
+  for (let value = Math.ceil(min / tick) * tick; value <= max; value += tick) {
+    const yp = Math.round(y(value)) + 0.5;
+    segment(left, yp, right, yp, '#223149');
+    if (!showClose || Math.abs(yp - closeY) > 13) {
+      ctx.fillStyle = '#a3b2c8';
+      ctx.fillText(price(value), right + 7, yp + 4);
+    }
+  }
+  segment(left, volTop - 5, right, volTop - 5, '#304057');
+  segment(left, volBottom, right, volBottom, '#304057');
+  if (boundary >= left && boundary <= right) segment(boundary, top, boundary, volBottom, '#7492ba', 1, [4, 4]);
+  segment(right, top, right, volBottom, '#304057');
+  ctx.fillStyle = '#9cafcb';
+  if (visibleBars.length) ctx.fillText(maxVol >= 10000 ? (maxVol / 10000).toFixed(0) + '万手' : maxVol.toFixed(0) + '手', right + 7, volTop + 8);
+
+  const ticks = [];
+  if (visibleBars.length) {
+    const pastTicks = Math.max(1, Math.floor((Math.min(right, boundary) - left) / 110));
+    for (let slot = 0; slot <= pastTicks; slot++) {
+      const index = firstVisible + Math.round(slot / pastTicks * (lastVisible - firstVisible));
+      if (ticks.at(-1)?.i !== index) ticks.push({ i: index, text: bars[index].date });
+    }
+  }
+  const futureSpacing = step >= 16 ? Math.ceil(32 / step) : Math.max(5, Math.ceil(32 / step / 5) * 5);
+  const firstFuture = Math.max(1, Math.ceil((xStart - last) / futureSpacing));
+  for (let i = firstFuture * futureSpacing; i <= xEnd - last; i += futureSpacing) ticks.push({ i: last + i, text: '+' + i });
+  let tickRight = left - 20;
+  for (const tick of ticks) {
+    const xp = x(tick.i);
+    const halfWidth = ctx.measureText(tick.text).width / 2;
+    const anchor = Math.max(left + halfWidth, Math.min(right - halfWidth, xp));
+    if (anchor - halfWidth < tickRight + 10) continue;
+    tickRight = anchor + halfWidth;
+    if (tick.i !== last) segment(xp, top, xp, volBottom, tick.i > last ? '#273b54' : '#1c2a3e');
+    ctx.textAlign = 'center';
+    ctx.fillStyle = tick.i > last ? '#9bb5dc' : '#a6b7d0';
+    ctx.fillText(tick.text, anchor, h - 11);
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, right - left, volBottom - top);
+  ctx.clip();
+  const bodyWidth = Math.max(1, step * 0.68);
+  for (const [offset, bar] of visibleBars.entries()) {
+    const color = bar.close >= bar.open ? '#f1666e' : '#39c69b';
+    const xp = x(firstVisible + offset);
+    const vHeight = bar.vol / maxVol * (volBottom - volTop - 1);
+    ctx.fillStyle = bar.close >= bar.open ? '#8b465b' : '#236d62';
+    ctx.fillRect(xp - bodyWidth / 2, volBottom - vHeight, bodyWidth, vHeight);
+    segment(xp, y(bar.high), xp, y(bar.low), color, 0.9);
+    ctx.fillStyle = color;
+    ctx.fillRect(xp - bodyWidth / 2, y(Math.max(bar.open, bar.close)), bodyWidth, Math.max(1, Math.abs(y(bar.open) - y(bar.close))));
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, right - left, priceBottom - top);
+  ctx.clip();
+  if (state.box) {
+    const { bottom, top: ceiling, start, end } = state.box;
+    ctx.fillStyle = '#81aaff16';
+    ctx.strokeStyle = '#8eaddc70';
+    ctx.lineWidth = 1;
+    ctx.fillRect(x(start), y(ceiling.b), x(end) - x(start), y(bottom.b) - y(ceiling.b));
+    ctx.strokeRect(x(start), y(ceiling.b), x(end) - x(start), y(bottom.b) - y(ceiling.b));
+  }
+  if (showClose) segment(x(last), closeY, right, closeY, '#6c85a155');
+  const horizontalValues = new Set();
+  for (const level of state.levels.filter(Boolean)) {
+    if (level.start > xEnd || horizontalValues.has(level.b)) continue;
+    horizontalValues.add(level.b);
+    segment(x(level.start), y(level.b), right, y(level.b), level.color + '96');
+  }
+  for (const line of state.trends.filter(Boolean)) {
+    if (line.start > xEnd) continue;
+    segment(x(line.start), y(lineAt(line, line.start)), right, y(lineAt(line, xEnd)), line.color, 1.7);
+    for (const point of line.touches) {
+      if (point.i < xStart || point.i > xEnd) continue;
+      ctx.beginPath();
+      ctx.arc(x(point.i), y(point.value), state.hover === point.i ? 4.3 : 2.9, 0, Math.PI * 2);
+      ctx.fillStyle = '#0e1724';
+      ctx.fill();
+      ctx.strokeStyle = line.color;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+  }
+
+  const futureWidth = right - futureLeft;
+  if (futureWidth > 27 && horizon < 200) {
+    for (const { side, trigger, next } of state.paths) {
+      if (!trigger) continue;
+      const color = side === 'high' ? '#ff7e87' : '#55e2b5';
+      const direction = side === 'high' ? 1 : -1;
+      const firstI = last + Math.max(4, horizon * 0.26);
+      const nextI = last + horizon * 0.63;
+      const firstValue = lineAt(trigger, firstI);
+      if (direction * (firstValue - close) <= 0 || firstValue <= min || firstValue >= max) continue;
+      const ax = x(firstI), ay = y(firstValue);
+      const nextValue = next ? lineAt(next, nextI) : NaN;
+      const hasNextPoint = direction * (nextValue - firstValue) > 0 && nextValue > min && nextValue < max;
+      const bx = hasNextPoint ? x(nextI) : ax;
+      const by = hasNextPoint ? y(nextValue) : ay;
+      segment(x(last), y(close), ax, ay, color + 'a6', 1.25, [3, 4]);
+      if (hasNextPoint) {
+        segment(ax, ay, bx, by, color + 'bf', 1.35, [3, 4]);
+        ctx.beginPath();
+        ctx.arc(ax, ay, 3.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#101e30';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.fill();
+        ctx.stroke();
+      }
+      const angle = Math.atan2(by - (hasNextPoint ? ay : y(close)), bx - (hasNextPoint ? ax : x(last)));
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - 8 * Math.cos(angle - 0.52), by - 8 * Math.sin(angle - 0.52));
+      ctx.lineTo(bx - 8 * Math.cos(angle + 0.52), by - 8 * Math.sin(angle + 0.52));
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+  }
+
+  const crossLabels = [];
+  for (const cross of visibleCrosses) {
+    const xp = x(cross.i), yp = y(cross.value);
+    const selected = cross === state.activeCross;
+    const radius = selected ? 6 : 4.3;
+    if (selected) segment(xp, top, xp, priceBottom, '#aec6f1b0', 1, [3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xp, yp - radius);
+    ctx.lineTo(xp + radius, yp);
+    ctx.lineTo(xp, yp + radius);
+    ctx.lineTo(xp - radius, yp);
+    ctx.closePath();
+    ctx.fillStyle = selected ? '#e0ecff' : '#15253b';
+    ctx.strokeStyle = '#d2e2ff';
+    ctx.lineWidth = 1.25;
+    ctx.fill();
+    ctx.stroke();
+    if (selected || (cross.i > last && w > 600)) crossLabels.push({ xp, yp, cross });
+  }
+  ctx.restore();
+
+  const annotations = crossLabels
+    .sort((a, b) => Number(b.cross === state.activeCross) - Number(a.cross === state.activeCross))
+    .map(({ xp, yp, cross }) => ({
+      xp: xp + 7, yp, limit: right,
+      text: cross.i > last ? '+' + (cross.i - last).toFixed(1) + ' · ' + price(cross.value) : price(cross.value),
+      color: '#e1ebfe', background: '#263a56'
+    }));
+  for (const level of state.levels.filter(Boolean)) {
+    const historyEnd = level.key === 'box' ? level.end : last;
+    annotations.push({
+      xp: Math.max(left, x(level.start)) + 6, yp: y(level.b), limit: Math.min(right, x(historyEnd)),
+      text: level.name, color: level.color, background: '#101a29ed', levelPrice: level.b
+    });
+  }
+  ctx.font = labelFont;
+  ctx.textAlign = 'left';
+  const labelBoxes = [];
+  const labeledPrices = new Set();
+  for (const { xp, yp, limit, text, color, background, levelPrice } of annotations) {
+    if (yp < top || yp > priceBottom || labeledPrices.has(levelPrice)) continue;
+    const width = ctx.measureText(text).width + 10;
+    if (levelPrice !== undefined && xp + width > limit) continue;
+    const lx = Math.max(left, Math.min(xp, limit - width));
+    const ly = [Math.max(top, yp - 20), yp + 4].find(candidate =>
+      candidate + 16 <= priceBottom &&
+      !labelBoxes.some(box => lx < box.x + box.width + 4 && lx + width + 4 > box.x && Math.abs(candidate - box.y) < 19));
+    if (ly === undefined) continue;
+    if (levelPrice !== undefined) labeledPrices.add(levelPrice);
+    labelBoxes.push({ x: lx, y: ly, width });
+    ctx.fillStyle = background;
+    ctx.fillRect(lx, ly, width, 16);
+    ctx.fillStyle = color;
+    ctx.fillText(text, lx + 5, ly + 12);
+  }
+
+  ctx.font = axisFont;
+  ctx.textAlign = 'left';
+  if (showClose) {
+    ctx.fillStyle = '#315077';
+    ctx.fillRect(right + 1, closeY - 9, w - right - 2, 18);
+    ctx.fillStyle = '#edf5ff';
+    ctx.fillText(price(close), right + 7, closeY + 4);
+  }
+  if (state.hover !== null && state.hover >= xStart && state.hover <= xEnd) {
+    const xp = x(state.hover);
+    const bar = bars[state.hover];
+    segment(xp, top, xp, volBottom, '#d6e2faa8', 1, [3, 4]);
+    if (state.hover !== last) segment(left, y(bar.close), right, y(bar.close), '#d6e2fa76', 1, [3, 4]);
+    const label = bar.date;
+    const textWidth = ctx.measureText(label).width + 12;
+    const lx = Math.max(left, Math.min(xp - textWidth / 2, right - textWidth));
+    ctx.fillStyle = '#344b6a';
+    ctx.fillRect(lx, h - 24, textWidth, 19);
+    ctx.fillStyle = '#eef5ff';
+    ctx.fillText(label, lx + 6, h - 11);
+  }
+}
+
+function hover(index) {
+  if (state.hover === index) return;
+  state.hover = index;
+  renderOhlc();
+  draw();
+}
+function plotOffset(event) {
+  if (!state.chart) return null;
+  const rect = canvas.getBoundingClientRect();
+  const { left, right, top, bottom } = state.chart;
+  const dx = event.clientX - rect.left, dy = event.clientY - rect.top;
+  return dx >= left && dx <= right && dy >= top && dy <= bottom ? dx : null;
+}
+function followPointer(event) {
+  if (!state.chart) return;
+  const { left, step, boundary, xStart } = state.chart;
+  const dx = plotOffset(event);
+  const index = dx === null || dx > boundary ? null :
+    Math.max(0, Math.min(state.bars.length - 1, Math.round(xStart + (dx - left) / step)));
+  hover(index);
+}
+function setChartView(event, span, proposedStart) {
+  const { xStart, xEnd, fullEnd } = state.chart;
+  const start = Math.max(-1, Math.min(fullEnd - span, proposedStart));
+  if (span !== xEnd - xStart || start !== xStart) {
+    state.view = span === fullEnd + 1 ? null : { start, end: start + span };
+    draw();
+  }
+  followPointer(event);
+}
+
+let drag = null;
+let didDrag = false;
+canvas.addEventListener('pointerdown', event => {
+  if (!event.isPrimary || event.button !== 0 || event.pointerType === 'touch') return;
+  didDrag = false;
+  if (!state.view || plotOffset(event) === null) return;
+  drag = { pointerId: event.pointerId, lastX: event.clientX };
+  canvas.setPointerCapture(event.pointerId);
+});
+canvas.addEventListener('pointermove', event => {
+  if (drag?.pointerId !== event.pointerId) {
+    followPointer(event);
+    return;
+  }
+  const delta = drag.lastX - event.clientX;
+  if (!didDrag && Math.abs(delta) < 4) return;
+  didDrag = true;
+  drag.lastX = event.clientX;
+  canvas.classList.add('dragging');
+  event.preventDefault();
+  const { xStart, xEnd, step } = state.chart;
+  setChartView(event, xEnd - xStart, xStart + delta / step);
+});
+canvas.addEventListener('lostpointercapture', event => {
+  if (drag?.pointerId !== event.pointerId) return;
+  drag = null;
+  canvas.classList.remove('dragging');
+});
+canvas.addEventListener('pointerleave', () => { if (state.bars.length) hover(null); });
+function moveChartView(event, factor, scrollX = 0) {
+  const dx = plotOffset(event);
+  if (dx === null) return false;
+  const { left, right, xStart, xEnd, fullEnd, step } = state.chart;
+  event.preventDefault();
+
+  const span = xEnd - xStart;
+  const nextSpan = Math.max(12, Math.min(fullEnd + 1, span * factor));
+  const position = (dx - left) / (right - left);
+  setChartView(event, nextSpan, xStart + (span - nextSpan) * position + scrollX / step);
+  return true;
+}
+canvas.addEventListener('wheel', event => {
+  const mode = event.deltaMode;
+  if (!state.chart) return;
+  const { left, right, top, bottom } = state.chart;
+  if (!event.ctrlKey && Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+    const pixels = event.deltaX * (mode === 1 ? 16 : mode === 2 ? right - left : 1);
+    moveChartView(event, 1, pixels);
+    return;
+  }
+  if (!event.deltaY) return;
+  const delta = event.deltaY * (mode === 1 ? 16 : mode === 2 ? bottom - top : 1);
+  // Chromium delivers touchpad pinches as wheel events with ctrlKey set.
+  const amount = delta * (event.ctrlKey ? 0.01 : 0.002);
+  moveChartView(event, Math.exp(Math.max(-0.5, Math.min(0.5, amount))));
+}, { passive: false });
+
+// WebKit reports a cumulative scale for each pinch.
+let gestureScale = null;
+canvas.addEventListener('gesturestart', event => {
+  if (moveChartView(event, 1)) gestureScale = event.scale;
+}, { passive: false });
+canvas.addEventListener('gesturechange', event => {
+  if (gestureScale === null) return;
+  moveChartView(event, gestureScale / event.scale);
+  gestureScale = event.scale;
+}, { passive: false });
+canvas.addEventListener('gestureend', event => {
+  if (gestureScale === null) return;
+  event.preventDefault();
+  gestureScale = null;
+}, { passive: false });
+canvas.addEventListener('dblclick', event => {
+  if (didDrag || !state.view) return;
+  state.view = null;
+  draw();
+  followPointer(event);
+});
+canvas.addEventListener('keydown', event => {
+  if (!state.bars.length) return;
+  if (event.key === 'Escape') hover(null);
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    const { firstVisible, lastVisible } = state.chart;
+    if (firstVisible <= lastVisible) {
+      hover(Math.max(firstVisible, Math.min(lastVisible, (state.hover ?? lastVisible) + (event.key === 'ArrowLeft' ? -1 : 1))));
+    }
+  }
+});
+new ResizeObserver(draw).observe($('plot'));
+
+const chartPanel = $('chartPanel');
+const fullscreenButton = $('fullscreenButton');
+function syncFullscreenButton() {
+  const expanded = document.fullscreenElement === chartPanel || chartPanel.classList.contains('fullscreen-in-page');
+  fullscreenButton.textContent = expanded ? '退出全屏' : '全屏';
+}
+async function toggleFullscreen() {
+  if (chartPanel.classList.contains('fullscreen-in-page')) {
+    chartPanel.classList.remove('fullscreen-in-page');
+    syncFullscreenButton();
+    fullscreenButton.focus({ preventScroll: true });
+    return;
+  }
+  if (document.fullscreenElement === chartPanel) {
+    await document.exitFullscreen();
+    return;
+  }
+  if (document.fullscreenEnabled) {
+    try {
+      await chartPanel.requestFullscreen();
+      return;
+    } catch (error) {
+      console.warn('系统全屏不可用，改用页面内全屏。', error);
+    }
+  }
+  chartPanel.classList.add('fullscreen-in-page');
+  syncFullscreenButton();
+}
+fullscreenButton.addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', syncFullscreenButton);
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && chartPanel.classList.contains('fullscreen-in-page')) toggleFullscreen();
+});
+
+function queryInput() {
+  const version = ++searchVersion;
+  clearTimeout(searchTimer);
+  const query = $('query').value.trim();
+  if (!query) {
+    hideResults();
+    return;
+  }
+  searchTimer = setTimeout(() => findStocks(query, false, version), 250);
+}
+$('query').addEventListener('input', event => { if (!event.isComposing) queryInput(); });
+$('query').addEventListener('compositionend', queryInput);
+$('search').addEventListener('submit', event => {
+  event.preventDefault();
+  const query = $('query').value.trim();
+  if (!query) { $('query').focus(); return; }
+  clearTimeout(searchTimer);
+  findStocks(query, true, ++searchVersion);
+});
+$('search').addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    searchVersion++;
+    clearTimeout(searchTimer);
+    hideResults();
+    $('query').focus();
+  }
+  if (!['ArrowDown', 'ArrowUp'].includes(event.key) || $('results').hidden) return;
+  const buttons = Array.from($('results').querySelectorAll('button'));
+  if (!buttons.length) return;
+  event.preventDefault();
+  const index = buttons.indexOf(document.activeElement);
+  const next = index < 0 ? (event.key === 'ArrowDown' ? 0 : buttons.length - 1) :
+    (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+  buttons[next].focus();
+});
+document.addEventListener('pointerdown', event => {
+  if ($('search').contains(event.target)) return;
+  searchVersion++;
+  clearTimeout(searchTimer);
+  hideResults();
+});
+$('windowSize').addEventListener('change', applyWindow);
+$('adjust').addEventListener('change', () => loadStock(state.symbol));
+$('projection').addEventListener('change', () => {
+  state.activeCross = null;
+  state.view = null;
+  renderCrossings();
+  draw();
+});
+loadStock(state.symbol);
+</script>
+</body>
+</html>
