@@ -3793,6 +3793,7 @@ let publicVolumeCalendarAt = 0;
 let publicVolumeLast = 0;
 let publicVolumePhase = '';
 const publicVolumeRulesKey = 'market-workbench-public-volume-rules';
+const publicVolumeMarketKey = 'market-workbench-public-volume-market';
 
 let publicVolumeRules = parseVolumeRules(defaultVolumeRules);
 try {
@@ -3818,7 +3819,6 @@ function retainedVolumeStock(symbol, name, bars, limits, dates, settled) {
 async function extendPublicVolumeSnapshot(snapshot, sessions, settled) {
   const newer = sessions.filter(date => date > snapshot.date && date <= settled);
   if (!newer.length) return snapshot;
-  if (newer.length > 10) throw new Error('距离公开日线快照超过 10 个交易日，等待新快照');
   const events = new Map(snapshot.stocks.map(stock => [stock.symbol, {
     name: stock.name, dates: new Set(stock.limits.map(index => stock.bars[index][0]))
   }]));
@@ -3860,7 +3860,15 @@ async function extendPublicVolumeSnapshot(snapshot, sessions, settled) {
 }
 
 async function updatePublicVolume() {
-  if (!publicVolumeSnapshot) publicVolumeSnapshot = JSON.parse($('publicVolumeSeed').textContent);
+  if (!publicVolumeSnapshot) {
+    publicVolumeSnapshot = JSON.parse($('publicVolumeSeed').textContent);
+    try {
+      const cached = JSON.parse(localStorage.getItem(publicVolumeMarketKey));
+      if (cached?.date > publicVolumeSnapshot.date && Array.isArray(cached.stocks)) publicVolumeSnapshot = cached;
+    } catch (error) {
+      console.warn('读取本地选股日线缓存失败', error);
+    }
+  }
   const stamp = Date.now();
   const now = stockClock(stamp);
   const today = now.slice(0, 10);
@@ -3894,6 +3902,11 @@ async function updatePublicVolume() {
     publicVolumeProgress = { scanned: 0, total: null };
     publicVolumeEvents.dispatchEvent(new Event('selector'));
     publicVolumeSnapshot = await extendPublicVolumeSnapshot(publicVolumeSnapshot, sessions, settled);
+    try {
+      localStorage.setItem(publicVolumeMarketKey, JSON.stringify(publicVolumeSnapshot));
+    } catch (error) {
+      console.warn('保存本地选股日线缓存失败', error);
+    }
   }
   const rules = publicVolumeRules;
   const candidates = volumeOptions(publicVolumeSnapshot, sessions, rules);
