@@ -203,6 +203,11 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .scanner-scenario[data-considered]{background:#1b3742;color:#b9f1e6}
 .scenario-choices button .scenario-percent{font-weight:700;margin-left:4px}
 .scenario-context{color:var(--muted);font-size:11px}
+
+#trendRecordFilter{padding:4px 7px;border:1px solid #3b4e68;border-radius:6px;background:#172438;color:#e3eaf4}
+.trend-chart-status{padding:6px 14px 0;margin:0 0 5px}
+.trend-toast{position:fixed;right:18px;bottom:18px;z-index:10;max-width:min(440px,calc(100vw - 36px));padding:12px 14px;border:1px solid #375c6b;border-radius:9px;background:#142936;color:#eaf6f5;box-shadow:0 10px 35px #0007}
+.trend-toast p{font-size:13px;margin:0 0 7px}
 </style>
 </head>
 <body>
@@ -329,6 +334,17 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
         <div id="alertLog"></div>
       </article>
     </div>
+    <article class="dash-card scanner-results" id="trendRecordPanel">
+      <div class="dash-card-head">
+        <div><h3>突破与支撑记录</h3><p class="dash-muted" id="trendWatchStatus"></p></div>
+        <label class="dash-note">信号 <select id="trendRecordFilter">
+          <option value="all">全部</option><option value="up">向上突破</option>
+          <option value="down">向下跌破</option><option value="reclaim">向上收回支撑</option><option value="near">接近支撑</option>
+        </select></label>
+      </div>
+      <div id="trendRecords"></div>
+      <p class="dash-note">板块前排及个股预警自动参与跨线监控，也可在个股图上单独开启。接近支撑按线价上方 1% 计算。网页打开时约每分钟检查，记录保存在当前浏览器。</p>
+    </article>
   </section>
   <section id="marketScanner" class="dash-view" aria-labelledby="scannerTitle" hidden>
     <div class="dash-heading">
@@ -350,8 +366,10 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
       </details>
     </article>
     <article class="dash-card scanner-results">
-      <div class="dash-card-head"><h3>前排观察池</h3><button type="button" class="dash-text-button" data-open-view="alerts">查看提醒与语音设置</button></div>
+      <div class="dash-card-head"><h3>前排观察池</h3><button type="button" class="dash-text-button" data-open-view="alerts">查看突破记录与语音设置</button></div>
       <div id="scannerPool" class="scanner-pool"></div>
+      <div id="scannerTrendHits" class="dash-note" hidden></div>
+      <p class="dash-note">有有效参考线的前排候选参与跨线检查，入池结果继续按情景占比排序。</p>
     </article>
     <article class="dash-card scanner-results">
       <div class="dash-card-head"><h3>扫描排行</h3><span id="scannerEnvironment" class="dash-muted"></span></div>
@@ -386,9 +404,10 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
         <div class="controls"><label for="adjust">价格</label><select id="adjust"><option value="0">不复权</option><option value="1">前复权</option></select></div>
         <div class="controls"><label for="projection">向右延伸</label><select id="projection"><option value="30" selected>30 根</option><option value="60">60 根</option><option value="120">120 根</option></select></div>
         <button type="button" id="alertAddStock" class="dash-button" disabled>设置预警</button>
+        <button type="button" id="trendMonitorStock" class="dash-button" aria-pressed="false" disabled>监控图中趋势线</button>
         <button type="button" id="fullscreenButton" class="fullscreen-button" aria-controls="chartPanel">全屏</button>
       </div>
-      <div id="ohlc" class="ohlc"><span>开、高、低、收及成交量</span></div>
+      <p id="trendChartStatus" class="dash-note trend-chart-status" hidden></p><div id="ohlc" class="ohlc"><span>开、高、低、收及成交量</span></div>
       <div id="averages" class="averages mono" aria-label="收盘价移动平均线"></div>
       <div class="scenario-toolbar">
         <div id="scenarioChoices" class="scenario-choices" role="group" aria-label="切换推演走势"></div>
@@ -857,6 +876,7 @@ async function loadStock(symbol, automatic = false) {
   $('empty').hidden = true;
   setStatus('');
   applyWindow(automatic);
+  document.dispatchEvent(new Event('market-stock-loaded'));
 }
 
 function applyWindow(preserve = false) {
@@ -1906,6 +1926,11 @@ function environmentLabel(environment) {
 }
 
 </script>
+<aside id="trendToast" class="trend-toast" hidden>
+  <p id="trendToastText" role="status"></p>
+  <button type="button" class="dash-text-button" id="trendToastOpen">查看记录</button>
+  <button type="button" class="dash-text-button" id="trendToastClose">关闭</button>
+</aside>
 <script>
 (() => {
 "use strict";
@@ -2673,12 +2698,12 @@ function alertMovingAverageContext(quote, band) {
 
 function renderStockAlerts() {
   const { rules, history } = stockAlerts;
-  const unread = history.filter(item => !item.read).length;
+  const unread = history.filter(item => !item.read).length + trendMonitor.records.filter(item => !item.read).length;
   $('alertNavCount').hidden = unread === 0;
   $('alertNavCount').textContent = unread;
   $('alertNavCount').parentElement.setAttribute('aria-label', unread ? '个股预警，' + unread + ' 条未读' : '个股预警');
   $('alertStatus').textContent = [alertScan || (rules.length ? (stockMarketOpen() ? '盘中监控' : '休市 · 自动检查暂停') : ''), alertStorageError].filter(Boolean).join(' · ');
-  $('alertRefresh').disabled = alertBusy || !rules.length;
+  $('alertRefresh').disabled = alertBusy || trendBusy || (!rules.length && !trendWatches().length);
   $('alertRead').disabled = !unread;
   $('alertWatchList').innerHTML = rules.map(rule => {
     const quote = rule.quote;
@@ -2712,6 +2737,7 @@ function renderStockAlerts() {
     (item.read ? '' : '<span class="dash-pill">未读</span>') +
     (item.action ? '<p class="alert-event-action">' + item.volume + ' · ' + item.action + '</p>' : '') + '</div>'
   ).join('') || '<p class="dash-empty">暂无触发记录</p>';
+  renderTrendMonitor();
 }
 
 async function scanStockAlerts(manual = false) {
@@ -2855,7 +2881,9 @@ $('alertWatchList').addEventListener('click', event => {
 
 $('alertRead').addEventListener('click', () => {
   for (const item of stockAlerts.history) item.read = true;
+  for (const item of trendMonitor.records) item.read = true;
   saveStockAlerts();
+  saveTrendMonitor();
   renderStockAlerts();
 });
 $('alertVoice').disabled = !speechAvailable;
@@ -2865,10 +2893,272 @@ $('alertVoice').addEventListener('click', () => {
   $('alertVoice').textContent = alertVoice ? '关闭语音' : '开启语音';
   if (alertVoice) speak('个股预警语音已开启。', 'alertStatus');
 });
-$('alertRefresh').addEventListener('click', () => scanStockAlerts(true));
-renderStockAlerts();
-scanStockAlerts();
-setInterval(scanStockAlerts, QUOTE_REFRESH_MS);
+$('alertRefresh').addEventListener('click', () => {
+  scanStockAlerts(true);
+  checkTrendAlerts(true);
+});
+
+const trendMonitorKey = 'market-workbench-trend-monitor-v1';
+const trendSignals = { up: '向上突破', down: '向下跌破', reclaim: '向上收回支撑', near: '接近支撑' };
+const trendMonitor = { manual: [], board: null, snapshots: {}, records: [] };
+try {
+  const saved = JSON.parse(localStorage.getItem(trendMonitorKey));
+  if (saved) Object.assign(trendMonitor, saved);
+} catch (error) {
+  console.warn('跨线监控读取失败', error);
+}
+
+let trendBusy = false;
+let trendCheckedAt = 0;
+let trendStatus = '';
+let trendToastTimer = 0;
+
+function saveTrendMonitor() {
+  try {
+    localStorage.setItem(trendMonitorKey, JSON.stringify(trendMonitor));
+  } catch (error) {
+    console.warn('跨线监控保存失败', error);
+    trendStatus += ' · 记录暂未保存到本机';
+  }
+}
+
+function trendWatches() {
+  const watches = new Map((trendMonitor.board?.rows || []).map(row => [row.symbol, row]));
+  for (const rule of stockAlerts.rules) watches.set(rule.symbol, rule);
+  for (const item of trendMonitor.manual) watches.set(item.symbol, item);
+  return [...watches.values()];
+}
+
+function trendKey(item) {
+  return item.symbol + '/' + item.adjustment;
+}
+
+function buildTrendSnapshot(bars, decimal, date, window = 360) {
+  const closed = bars.filter(bar => bar.date < date).slice(-window);
+  if (closed.length < 60) return null;
+  const reference = closed.at(-1);
+  const fit = analyze(closed, decimal);
+  const entries = [...fit.trends, ...fit.levels, fit.box && {
+    ...fit.box.top, key: 'box-top', name: '箱体上沿', side: 'high'
+  }].filter(Boolean);
+  const lines = [];
+  for (const line of entries) {
+    const prior = Number(lineAt(line, closed.length - 1).toFixed(decimal));
+    const price = Number(lineAt(line, closed.length).toFixed(decimal));
+    if (!(price > 0 && prior > 0)) continue;
+    const same = lines.find(item => item.side === line.side && item.price === price && item.prior === prior);
+    if (same) same.name += ' / ' + line.name;
+    else lines.push({ key: line.key, name: line.name, side: line.side, prior, price });
+  }
+  return { date, referenceDate: reference.date, referenceClose: reference.close, lines, seen: [] };
+}
+
+function refreshBoardTrendWatches(sector, candidates) {
+  trendMonitor.board = { code: sector.code, name: sector.name, rows: candidates.map(({ symbol, name, decimal }) =>
+    ({ symbol, name, decimal, adjustment: '0' })) };
+  for (const candidate of candidates) {
+    if (!candidate.snapshot) continue;
+    const key = candidate.symbol + '/0';
+    const previous = trendMonitor.snapshots[key];
+    if (!previous || previous.date < candidate.snapshot.date) trendMonitor.snapshots[key] = candidate.snapshot;
+  }
+  const active = new Set(trendWatches().map(trendKey));
+  for (const key of Object.keys(trendMonitor.snapshots)) {
+    if (!active.has(key)) delete trendMonitor.snapshots[key];
+  }
+  saveTrendMonitor();
+  checkTrendAlerts(true);
+}
+
+function renderTrendMonitor() {
+  const watches = trendWatches();
+  const active = trendMonitor.manual.find(item => item.symbol === state.loadedSymbol);
+  const button = $('trendMonitorStock');
+  button.disabled = !state.loadedSymbol || Boolean(state.request);
+  button.textContent = active ? '取消手动跨线监控' : '监控图中趋势线';
+  button.setAttribute('aria-pressed', Boolean(active));
+
+  const watch = watches.find(item => item.symbol === state.loadedSymbol);
+  const snapshot = watch && trendMonitor.snapshots[trendKey(watch)];
+  const today = beijing().slice(0, 10);
+  const note = $('trendChartStatus');
+  note.hidden = !watch;
+  note.textContent = snapshot?.date === today && snapshot.lines.length
+    ? '盘中监控价 · ' + snapshot.referenceDate + ' 日线投影 · ' +
+      snapshot.lines.map(line => line.name + ' ' + line.price.toFixed(watch.decimal)).join(' · ')
+    : '已加入跨线监控，等待当日行情和有效参考线。';
+
+  $('trendWatchStatus').textContent = watches.length + ' 只监控中' +
+    (trendMonitor.board?.rows.length ? ' · ' + trendMonitor.board.name + ' 前排 ' + trendMonitor.board.rows.length + ' 只' : '') +
+    (trendStatus ? ' · ' + trendStatus : '');
+  const choice = $('trendRecordFilter').value;
+  const rows = trendMonitor.records.filter(item => choice === 'all' || item.type === choice);
+  $('trendRecords').innerHTML = rows.length
+    ? '<div class="scanner-table"><table class="dash-table"><thead><tr><th>个股</th><th>首次发现</th><th>信号</th><th>参考线</th><th>线价</th><th>发现价</th><th>收盘结果</th></tr></thead><tbody>' +
+      rows.map(item => '<tr><td>' + stockButton(item.symbol, item.name) + '<small>' + item.symbol.slice(2) + '</small></td><td>' +
+        dateTime.format(item.time) + '<small>报价 ' + shortTime.format(item.quoteAt) + '</small></td><td class="' +
+        (item.type === 'down' ? 'down' : item.type === 'near' ? '' : 'up') + '">' +
+        trendSignals[item.type] + '</td><td>' + esc(item.line) + '<small>基准 ' + item.referenceDate + '</small></td><td>' +
+        item.threshold.toFixed(item.decimal) + '</td><td>' + item.price.toFixed(item.decimal) + '</td><td>' +
+        (item.closeResult || (item.type === 'near' ? '—' : '待收盘')) + (item.read ? '' : ' · 未读') + '</td></tr>').join('') +
+      '</tbody></table></div>'
+    : '<p class="dash-empty">暂无符合条件的跨线记录。</p>';
+  const boardSymbols = new Set((trendMonitor.board?.rows || []).map(item => item.symbol));
+  const hits = trendMonitor.records.filter(item => item.date === today && boardSymbols.has(item.symbol) && item.type !== 'near');
+  const boardHits = $('scannerTrendHits');
+  boardHits.hidden = !hits.length;
+  boardHits.innerHTML = hits.length ? '今日跨线 ' + hits.length + ' 条 · ' + hits.slice(0, 5).map(item =>
+    stockButton(item.symbol, item.name) + ' ' + trendSignals[item.type]).join('　') : '';
+}
+
+function alertTrendToast(records) {
+  const text = records.slice(0, 3).map(item => item.name + ' ' + trendSignals[item.type] + ' ' + item.line).join('；');
+  const toast = $('trendToast');
+  (document.fullscreenElement || document.body).append(toast);
+  $('trendToastText').textContent = text + (records.length > 3 ? ' · 共 ' + records.length + ' 条' : '');
+  toast.hidden = false;
+  clearTimeout(trendToastTimer);
+  trendToastTimer = setTimeout(() => { toast.hidden = true; }, 10000);
+  if (alertVoice) speak(records.map(item => item.name + '，' + trendSignals[item.type] + '，' + item.line).join('。'), 'alertStatus');
+}
+
+function observeTrendQuote(watch, snapshot, price, quoteAt, now) {
+  const events = [];
+  const previous = snapshot.previousPrice ?? snapshot.referenceClose;
+  if (!snapshot.lastQuoteAt || quoteAt > snapshot.lastQuoteAt || (quoteAt === snapshot.lastQuoteAt && price !== previous)) {
+    for (const line of snapshot.lines) {
+      let type;
+      if (line.side === 'high' && previous <= line.price && price > line.price) type = 'up';
+      if (line.side === 'low' && previous >= line.price && price < line.price) type = 'down';
+      if (line.side === 'low' && previous < line.price && price > line.price) type = 'reclaim';
+      if (!type && line.side === 'low' && price >= line.price && price <= line.price * 1.01 + 1e-9) type = 'near';
+      const signal = line.key + '/' + type;
+      if (!type || snapshot.seen.includes(signal) || trendMonitor.records.some(item => item.symbol === watch.symbol &&
+          item.adjustment === watch.adjustment && item.date === snapshot.date && item.lineKey === line.key && item.type === type)) continue;
+      snapshot.seen.push(signal);
+      events.push({
+        symbol: watch.symbol, name: watch.name, adjustment: watch.adjustment, decimal: watch.decimal,
+        date: snapshot.date, referenceDate: snapshot.referenceDate, type, line: line.name, lineKey: line.key,
+        threshold: line.price, price, time: now, quoteAt, read: false
+      });
+    }
+    snapshot.previousPrice = price;
+    snapshot.lastQuoteAt = quoteAt;
+  }
+  if (stockClock(now).slice(11, 16) >= STOCK_CLOSE_CHECK && stockClock(quoteAt).slice(11, 16) >= '15:00') {
+    for (const item of [...trendMonitor.records, ...events]) {
+      if (item.symbol !== watch.symbol || item.adjustment !== watch.adjustment || item.date !== snapshot.date || item.type === 'near') continue;
+      settleTrendRecord(item, price);
+    }
+  }
+  return events;
+}
+
+function settleTrendRecord(item, close) {
+  item.closeResult = item.type === 'down'
+    ? (close < item.threshold ? '收盘失守' : '收盘已收回')
+    : (close > item.threshold ? '收盘站上' : '收盘未站上');
+}
+
+async function checkTrendAlerts(manual = false) {
+  const watches = trendWatches();
+  if (trendBusy || !watches.length || (!manual && !stockRefreshDue(trendCheckedAt))) return;
+  trendBusy = true;
+  trendCheckedAt = Date.now();
+  const today = stockClock(trendCheckedAt).slice(0, 10);
+  const events = [];
+  let failed = 0;
+  let checked = 0;
+  let mismatched = 0;
+  try {
+    for (let start = 0; start < watches.length; start += 30) {
+      const group = watches.slice(start, start + 30);
+      let quotes;
+      try {
+        const data = await getMarket(endpoint + 'ulist.np/get', {
+          secids: group.map(item => item.symbol).join(','), fields: 'f2,f5,f12,f13,f18,f124', fltt: 2, invt: 2
+        });
+        quotes = new Map(Object.values(data.diff || []).map(row => [symbolOf(row), row]));
+      } catch (error) {
+        failed += group.length;
+        console.warn('跨线批量行情读取失败', error);
+        continue;
+      }
+      for (let offset = 0; offset < group.length; offset += 4) {
+        const settled = await Promise.allSettled(group.slice(offset, offset + 4).map(async watch => {
+          const quote = quotes.get(watch.symbol);
+          const quoteAt = quote?.f124 * 1000;
+          if (!Number.isFinite(quoteAt) || quoteAt <= 0 || stockClock(quoteAt).slice(0, 10) !== today ||
+              !(quote.f2 > 0) || !(quote.f5 > 0)) return [];
+          const key = trendKey(watch);
+          let snapshot = trendMonitor.snapshots[key];
+          if (snapshot?.date !== today) {
+            const { bars } = await fetchStockHistory(watch.symbol, watch.adjustment, 500, AbortSignal.timeout(10000));
+            for (const record of trendMonitor.records) {
+              if (record.symbol !== watch.symbol || record.adjustment !== watch.adjustment ||
+                  record.date >= today || record.type === 'near' || record.closeResult) continue;
+              const bar = bars.find(item => item.date === record.date);
+              if (bar) settleTrendRecord(record, bar.close);
+            }
+            snapshot = buildTrendSnapshot(bars, watch.decimal, today, watch.window) || { date: today, lines: [] };
+            trendMonitor.snapshots[key] = snapshot;
+          }
+          if (!snapshot.lines.length) return [];
+          if (Number.isFinite(quote.f18) && quote.f18 > 0 &&
+              Math.abs(snapshot.referenceClose - quote.f18) > Math.max(1.1 * 10 ** -watch.decimal, quote.f18 * 0.001)) {
+            mismatched++;
+            return [];
+          }
+          if (!trendWatches().some(item => trendKey(item) === key)) return [];
+          checked++;
+          return observeTrendQuote(watch, snapshot, quote.f2, quoteAt, Date.now());
+        }));
+        for (const result of settled) {
+          if (result.status === 'fulfilled') events.push(...result.value);
+          else {
+            failed++;
+            console.warn('跨线参考线读取失败', result.reason);
+          }
+        }
+      }
+    }
+    trendStatus = '检查于 ' + shortTime.format(Date.now()) + ' · 有效行情 ' + checked + '/' + watches.length +
+      (mismatched ? ' · ' + mismatched + ' 只昨收口径不一致' : '') + (failed ? ' · ' + failed + ' 只行情读取失败' : '');
+    if (events.length) trendMonitor.records = [...events.reverse(), ...trendMonitor.records].slice(0, 500);
+    saveTrendMonitor();
+    if (events.length) alertTrendToast(events);
+  } finally {
+    trendBusy = false;
+    renderStockAlerts();
+  }
+}
+
+$('trendMonitorStock').addEventListener('click', () => {
+  if (!state.loadedSymbol || state.request) return;
+  const symbol = state.loadedSymbol;
+  const active = trendMonitor.manual.find(item => item.symbol === symbol);
+  if (active) {
+    trendMonitor.manual = trendMonitor.manual.filter(item => item.symbol !== symbol);
+  } else {
+    const watch = { symbol, name: state.name, adjustment: state.loadedAdjustment, decimal: state.decimal, window: Number($('windowSize').value) };
+    trendMonitor.manual.push(watch);
+    const today = beijing().slice(0, 10);
+    const key = trendKey(watch);
+    const snapshot = buildTrendSnapshot(state.allBars, watch.decimal, today, watch.window);
+    if (snapshot && trendMonitor.snapshots[key]?.date !== today) trendMonitor.snapshots[key] = snapshot;
+  }
+  saveTrendMonitor();
+  renderTrendMonitor();
+  if (!active) checkTrendAlerts(true);
+});
+$('trendRecordFilter').addEventListener('change', renderTrendMonitor);
+$('trendToastClose').addEventListener('click', () => { $('trendToast').hidden = true; });
+$('trendToastOpen').addEventListener('click', () => {
+  $('trendToast').hidden = true;
+  openView('alerts');
+  $('trendRecordPanel').scrollIntoView({ block: 'start' });
+});
+document.addEventListener('market-stock-loaded', renderTrendMonitor);
 
 const scannerKey = 'market-workbench-sector-scanner-v1';
 const scannerInterval = 300000;
@@ -2960,11 +3250,14 @@ async function scanCandidate(candidate, depth, environment) {
   const latest = bars.at(-1);
   if (latest.date !== candidate.date) throw new Error(candidate.name + ' 的日线尚未同步');
   if (bars.length < 60) return null;
-  const volumeInfo = await readStockVolume(candidate.symbol, bars, signal);
   const decimal = Math.max(0, Math.min(4, data.decimal ?? 2));
+  const savedTrend = trendMonitor.snapshots[candidate.symbol + '/0'];
+  const trend = { symbol: candidate.symbol, name: candidate.name, decimal,
+    snapshot: savedTrend?.date === candidate.date ? savedTrend : buildTrendSnapshot(bars, decimal, candidate.date) };
+  const volumeInfo = await readStockVolume(candidate.symbol, bars, signal);
   const { paths } = analyze(bars.slice(-360), decimal);
   const ratios = rankStockScenarios(bars, volumeInfo, environment, paths);
-  if (ratios.length < depth) return null;
+  if (ratios.length < depth) return { ...candidate, ratios, trend };
   const selected = ratios.slice(0, depth);
   const direction = selected.reduce((score, item) => score +
     (item.key === 'breakdown' ? -item.percent : item.key === 'range' ? 0 : item.percent), 0);
@@ -2977,7 +3270,7 @@ async function scanCandidate(candidate, depth, environment) {
     quote: { close: latest.close, date: latest.date, ma: latest.ma, volumeInfo, checkedAt: Date.now() },
     phases: { low: '', high: '' }
   } : null;
-  return { ...candidate, ratios, direction, score, rule };
+  return { ...candidate, ratios, direction, score, rule, trend };
 }
 
 function renderScanner() {
@@ -3058,16 +3351,18 @@ async function scanSector(sector) {
       console.warn('板块扫描个股读取失败', failures.map(result => result.reason));
       throw new Error(failures.length + ' 只个股读取失败，保留上次扫描结果。');
     }
-    const rows = assessed.map(result => result.value).filter(Boolean).sort((a, b) => b.score - a.score || b.frontScore - a.frontScore);
+    const analyzed = assessed.map(result => result.value).filter(Boolean);
+    const rows = analyzed.filter(row => row.ratios.length >= depth).sort((a, b) => b.score - a.score || b.frontScore - a.frontScore);
     const { wanted, added } = applyScannerPool(sector, rows, depth);
     scanner.last = {
       sector, depth, environment, checkedAt: Date.now(),
-      rows: rows.map(({ rule, ...row }) => ({ ...row, inPool: wanted.has(row.symbol) }))
+      rows: rows.map(({ rule, trend, ...row }) => ({ ...row, inPool: wanted.has(row.symbol) }))
     };
     scannerMessage = sector.name + ' · ' + dateTime.format(scanner.last.checkedAt) + ' · ' + members.length +
       ' 只成分股 · 已分析 ' + rows.length + ' / ' + shortlist.length + ' 只前排股 · ' + wanted.size + ' 只在池' +
       (added ? ' · 新入池 ' + added + ' 只，已提醒' : '');
     saveScanner();
+    refreshBoardTrendWatches(sector, analyzed.map(row => row.trend));
   } catch (error) {
     console.warn('板块扫描失败', error);
     scannerMessage = sector.name + ' · ' + error.message;
@@ -3166,9 +3461,15 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
     refreshVisibleQuotes();
     scanStockAlerts();
+    checkTrendAlerts();
     checkScanner();
   }
 });
+renderStockAlerts();
+scanStockAlerts();
+checkTrendAlerts();
+setInterval(scanStockAlerts, QUOTE_REFRESH_MS);
+setInterval(checkTrendAlerts, 15000);
 refreshMarket();
 
 })();
