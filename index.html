@@ -18,6 +18,8 @@ main{max-width:1600px;margin:auto;padding:25px 34px 34px}.market-head{display:fl
 .layout{display:grid;gap:12px}.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;min-width:0}.chart-panel{overflow:hidden}
 .toolbar{min-height:54px;padding:9px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;border-bottom:1px solid #243147}.controls{display:flex;align-items:center;gap:7px}.controls label,.toolbar-name{font-size:12px;color:var(--muted)}.toolbar-name{font-size:13px;color:var(--text);font-weight:650;white-space:nowrap}.controls select{background:#192436;border:1px solid #344359;border-radius:6px;padding:3px 6px;font-size:12px}
 .fullscreen-button{margin-left:auto;padding:4px 10px;border:1px solid #344359;border-radius:6px;background:#192436;font-size:12px;white-space:nowrap}.fullscreen-button:hover{background:#25354c}
+.chart-view-button{padding:4px 9px;border:1px solid #344359;border-radius:6px;background:#192436;font-size:12px;white-space:nowrap}
+.chart-view-button[aria-pressed=true]{border-color:#426c81;color:#bde3ef;background:#182f41}
 .fullscreen-stock{display:none;color:var(--muted)}
 .chart-panel:is(:fullscreen,.fullscreen-in-page){display:flex;flex-direction:column;width:100%;height:100%;border:0;border-radius:0;overflow:auto}
 .chart-panel:is(:fullscreen,.fullscreen-in-page) .plot{flex:1 0 180px;height:auto}
@@ -34,7 +36,7 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .scenario-choices{display:flex;flex-wrap:wrap;gap:5px}
 .scenario-choices button{border:1px solid #344359;border-radius:6px;background:#172235;padding:4px 8px;font-size:12px}
 .scenario-choices button[aria-pressed=true]{border-color:var(--tone);color:var(--tone);background:#202d40}
-.scenario-meta{display:flex;flex-wrap:wrap;gap:5px 12px;font-size:11px;color:var(--muted)}
+.scenario-meta{display:flex;align-items:center;flex-wrap:wrap;gap:5px 12px;font-size:11px;color:var(--muted)}
 .scenarios .paths{grid-template-columns:repeat(4,minmax(0,1fr))}
 .path.current{background:#1a293e}
 .trend{border-bottom:1px solid #273348;padding:8px 0}.trend:last-child{border-bottom:0;padding-bottom:0}.trend summary{display:grid;grid-template-columns:7px 15px minmax(0,1fr) auto;column-gap:7px;align-items:center;list-style:none;cursor:pointer}.trend summary::-webkit-details-marker{display:none}.trend summary:before{content:"›";color:#a5b5cd}.trend[open] summary:before{transform:rotate(90deg)}.swatch{width:15px;display:inline-block;border-top:2px solid var(--line);flex:none;vertical-align:middle}.trend-title{white-space:nowrap;font-size:12px;font-weight:630}.trend .value{font-size:12px;color:var(--line)}.trend-sub{grid-column:3/-1;margin-top:2px;font-size:11px;color:var(--muted)}.missing{color:var(--muted)}.touches{display:flex;flex-wrap:wrap;gap:5px;padding-top:8px}.touches button{background:#182638;border:1px solid #354760;border-radius:4px;padding:2px 5px;color:#ceddf5;font-size:10px}.touches button:hover{border-color:var(--accent)}
@@ -208,10 +210,16 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .trend-chart-status{padding:6px 14px 0;margin:0 0 5px}
 .trend-toast{position:fixed;right:18px;bottom:18px;z-index:10;max-width:min(440px,calc(100vw - 36px));padding:12px 14px;border:1px solid #375c6b;border-radius:9px;background:#142936;color:#eaf6f5;box-shadow:0 10px 35px #0007}
 .trend-toast p{font-size:13px;margin:0 0 7px}
+
+.volume-rule-form { display:grid; gap:8px; max-width:700px; }
+.volume-rule-form label { font-weight:650; }
+.volume-rule-form textarea { width:100%; resize:vertical; padding:10px 12px; border:1px solid #3b4e68; border-radius:8px; background:#0e1827; color:#e3eaf4; font:inherit; line-height:1.65; }
+#volumeRuleMessage:empty, #volumeSelectorSummary:empty { display:none; }
+#volumeSelectorRows .dash-table :is(th,td):last-child { text-align:right; }
 </style>
 </head>
 <body>
-<header><div class="head"><div class="brand"><span class="mark" aria-hidden="true"><i></i></span><h1>市场工作台</h1></div><nav class="workspace-nav" aria-label="工作台页面"><button type="button" data-open-view="overview" aria-pressed="true">市场总览</button><button type="button" data-open-view="events" aria-pressed="false">事件提醒</button><button type="button" data-open-view="alerts" aria-pressed="false">个股预警<span id="alertNavCount" class="alert-nav-count" hidden></span></button><button type="button" data-open-view="hotspots" aria-pressed="false">热点接力</button><button type="button" data-open-view="scanner" aria-pressed="false">板块扫描</button><button type="button" data-open-view="global" aria-pressed="false">全球市场</button><button type="button" data-open-view="stock" aria-pressed="false">个股推演</button></nav><a class="source" href="https://quote.eastmoney.com/" target="_blank" rel="noopener">东方财富行情</a></div></header>
+<header><div class="head"><div class="brand"><span class="mark" aria-hidden="true"><i></i></span><h1>市场工作台</h1></div><nav class="workspace-nav" aria-label="工作台页面"><button type="button" data-open-view="overview" aria-pressed="true">市场总览</button><button type="button" data-open-view="events" aria-pressed="false">事件提醒</button><button type="button" data-open-view="alerts" aria-pressed="false">个股预警<span id="alertNavCount" class="alert-nav-count" hidden></span></button><button type="button" data-open-view="hotspots" aria-pressed="false">热点接力</button><button type="button" data-open-view="selector" aria-pressed="false">条件选股</button><button type="button" data-open-view="scanner" aria-pressed="false">板块扫描</button><button type="button" data-open-view="global" aria-pressed="false">全球市场</button><button type="button" data-open-view="stock" aria-pressed="false">个股推演</button></nav><a class="source" href="https://quote.eastmoney.com/" target="_blank" rel="noopener">东方财富行情</a></div></header>
 <main id="marketWorkspace" class="dash">
   <section id="marketOverview" class="dash-view" aria-labelledby="marketTitle">
     <div class="dash-heading">
@@ -346,6 +354,35 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
       <p class="dash-note">板块前排及个股预警自动参与跨线监控，也可在个股图上单独开启。接近支撑按线价上方 1% 计算。网页打开时约每分钟检查，记录保存在当前浏览器。</p>
     </article>
   </section>
+  <section id="marketVolumeSelector" class="dash-view" aria-labelledby="volumeSelectorTitle" hidden>
+    <div class="dash-heading">
+      <div><h2 id="volumeSelectorTitle">条件选股</h2><p class="dash-muted">涨停后缩量 · 沪深京 A 股</p></div>
+    </div>
+    <article class="dash-card scanner-results">
+      <form id="volumeSelectorForm" class="volume-rule-form">
+        <label for="volumeRule">选股条件</label>
+        <textarea id="volumeRule" rows="4" maxlength="300" spellcheck="false" aria-describedby="volumeRuleHelp" required></textarea>
+        <p id="volumeRuleHelp" class="dash-note">可修改涨停范围、基准日、连续缩量天数和今日量能比例。例如「今天的成交量小于基准量的80%」。</p>
+        <div class="dash-actions">
+          <button type="submit" class="dash-button dash-primary" id="volumeApply">应用并刷新</button>
+          <button type="button" class="dash-button" id="volumeReset">恢复默认</button>
+        </div>
+        <p id="volumeRuleMessage" class="dash-note" role="status"></p>
+      </form>
+    </article>
+    <article class="dash-card scanner-results">
+      <div class="dash-card-head">
+        <div><h3>筛选结果</h3><p id="volumeSelectorStatus" class="dash-muted" role="status">正在读取选股数据…</p></div>
+        <span id="volumeSelectorMode" class="dash-note"></span>
+      </div>
+      <p id="volumeSelectorSummary" class="dash-note"></p>
+      <div id="volumeSelectorRows"></div>
+      <details class="dash-method">
+        <summary>量能与刷新口径</summary>
+        <p>天数按交易日。日线来自新浪财经，盘中累计量来自腾讯行情。基础日线和新增涨停池按页面显示的交易日核对。已完成的涨停后日 K 逐日比较成交量，第一天与涨停当天比较。网页打开时盘中约每 30 秒更新累计量，累计量须同时低于上一完整交易日成交量和设置的基准门槛。收盘后用完整日 K 再筛一遍。</p>
+      </details>
+    </article>
+  </section>
   <section id="marketScanner" class="dash-view" aria-labelledby="scannerTitle" hidden>
     <div class="dash-heading">
       <div><h2 id="scannerTitle">板块扫描</h2><p class="dash-muted">筛选板块前排股并加入观察池。交易时段每 5 分钟自动重扫，新增入池会提醒。</p></div>
@@ -389,12 +426,12 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
       <div id="results" class="results" aria-label="股票搜索结果" aria-live="polite" hidden></div>
     </form>
   </div>
-  <p id="stockLinkStatus" class="stock-link-status" role="status" hidden></p>
   <p class="stock-link-status">
     <a href="./windows-stock-link.zip" download>下载 Windows 联动助手</a>
     <span aria-hidden="true"> · </span>
     <a href="./tongdaxin-four-line.zip" download>下载通达信主图指标</a>
   </p>
+  <p id="stockLinkStatus" class="stock-link-status" role="status" hidden></p>
   <p id="status" class="status" role="status" hidden></p>
   <div class="layout">
     <section id="chartPanel" class="panel chart-panel" aria-label="K 线与四线推演">
@@ -403,6 +440,7 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
         <div class="controls"><label for="windowSize">分析区间</label><select id="windowSize"><option value="180">180 根</option><option value="360" selected>360 根</option><option value="500">500 根</option></select></div>
         <div class="controls"><label for="adjust">价格</label><select id="adjust"><option value="0">不复权</option><option value="1">前复权</option></select></div>
         <div class="controls"><label for="projection">向右延伸</label><select id="projection"><option value="30" selected>30 根</option><option value="60">60 根</option><option value="120">120 根</option></select></div>
+        <button type="button" id="focusView" class="chart-view-button" aria-label="结构视图" aria-pressed="false" hidden>聚焦结构</button>
         <button type="button" id="alertAddStock" class="dash-button" disabled>设置预警</button>
         <button type="button" id="trendMonitorStock" class="dash-button" aria-pressed="false" disabled>监控图中趋势线</button>
         <button type="button" id="fullscreenButton" class="fullscreen-button" aria-controls="chartPanel">全屏</button>
@@ -411,10 +449,10 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
       <div id="averages" class="averages mono" aria-label="收盘价移动平均线"></div>
       <div class="scenario-toolbar">
         <div id="scenarioChoices" class="scenario-choices" role="group" aria-label="切换推演走势"></div>
-        <div class="scenario-meta"><span id="volumeStatus"></span><span class="scenario-context" id="scenarioContext"></span><a href="#scenarioGuidance">操作参考 ↓</a></div>
+        <div class="scenario-meta"><button type="button" id="dualScenario" class="chart-view-button" aria-pressed="false" hidden>双向情景</button><span id="volumeStatus"></span><span class="scenario-context" id="scenarioContext"></span><a href="#scenarioGuidance">操作参考 ↓</a></div>
       </div>
       <div id="plot" class="plot">
-        <canvas id="chart" tabindex="0" aria-label="日 K 线图。滚轮或触控板双指捏合缩放，按住拖动或双指左右滑动平移，双击恢复全图。用左右方向键查看日线，按 Escape 清除十字线。"></canvas>
+        <canvas id="chart" tabindex="0" aria-label="日 K 线图。滚轮或触控板双指捏合缩放，按住拖动或双指左右滑动平移，双击复原视图。用左右方向键查看日线，按 Escape 清除十字线。"></canvas>
         <p id="empty" class="empty">正在连接行情</p>
       </div>
       <ul id="levels" class="level-list" aria-label="支撑与压力"></ul>
@@ -425,11 +463,11 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
       <div id="stockDecision" class="stock-decision"></div><p class="dash-note">四种情景按模型评分占比排序，占比未经历史胜率校准。</p><div id="paths" class="paths"></div>
     </section>
     <aside class="side" aria-label="趋势线与关键位置">
-      <section class="panel side-section"><div class="section-heading"><h2>四条趋势线</h2><span>最新 K 线对应价</span></div><div id="trends"></div></section>
+      <section class="panel side-section"><div class="section-heading"><h2>趋势结构</h2><span>最新 K 线对应价</span></div><div id="trends"></div></section>
       <section class="panel side-section"><div class="section-heading"><h2>趋势线交叉</h2><span>距最新日 K</span></div><ul id="crossings" class="cross-list"></ul></section>
     </aside>
   </div>
-  <details class="method"><summary>画线口径</summary><p>高低点取日 K 两侧各 4 根内的显著波段极值。趋势线以相隔足够远的历史触点确定斜率，优先选触点多、跨度长且在触点区间内较少被收盘穿越的线。下降通道下轨须与主降线平行并独立通过低点检验。横向价位由重复触及的高低点聚合，箱体还要求支撑和压力至少交替触及四次。触点容差结合历史真实波幅与股价比例计算。交叉按同一交易序号上的线值相等计算。箭头表示条件路径，盘中最新日 K 会随行情更新。</p></details>
+  <details class="method"><summary>画线口径</summary><p>高低点取日 K 两侧各 4 根内的显著波段极值。主降线优先从通过检验的阶段高点起笔，结构视图聚焦该高点及其前后的日线。下降通道下沿与主降线平行，符合低点检验的独立下降线标为次级下降线。上升支撑和压力分别检验历史低点与高点。横向价位由重复触及的高低点聚合。箭头表示按最新日 K 价位计算的条件路径。</p></details>
   <dialog id="stockAlertDialog" class="dash-dialog">
     <form id="stockAlertForm">
       <h3 id="stockAlertTitle">设置个股预警</h3>
@@ -452,9 +490,10 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 const $ = id => document.getElementById(id);
 const TREND_TYPES = [
   { key: 'main', name: '主要下降趋势线', short: '主降', color: '#65ef81', side: 'high' },
-  { key: 'channel', name: '下降通道线', short: '通道', color: '#49c575', side: 'low' },
-  { key: 'rise', name: '上升趋势线', short: '上升', color: '#ff6671', side: 'low' },
-  { key: 'key', name: '关键支撑线', short: '关键支撑', color: '#f6d855', side: 'low' }
+  { key: 'channel', name: '下降通道下沿', short: '次降', color: '#49c575', side: 'low' },
+  { key: 'rise', name: '下方上升支撑', short: '升支撑', color: '#ff5965', side: 'low' },
+  { key: 'key', name: '关键支撑线', short: '关键支撑', color: '#f6d855', side: 'low' },
+  { key: 'rise-top', name: '上方上升压力', short: '升压力', color: '#ff5965', side: 'high' }
 ];
 const LEVEL_TYPES = [
   { key: 'box', name: '箱体支撑', color: '#8eaddc', side: 'low' },
@@ -471,7 +510,8 @@ const VOLUME_RULE = { high: 1.30, low: 0.80 };
 const state = {
   symbol: '1.600031', loadedSymbol: '', name: '', decimal: 2, allBars: [],
   bars: [], trends: [], levels: [], crossings: [], paths: [], box: null, scenarioKey: 'retest',
-  hover: null, activeCross: null, view: null, chart: null, request: null
+  hover: null, activeCross: null, view: null, chart: null, request: null,
+  structure: null, focusStructure: true, dualPaths: true
 };
 const price = value => value.toFixed(state.decimal);
 const volume = value => value >= 10000 ? (value / 10000).toFixed(2) + ' 万手' : value.toLocaleString('zh-CN') + ' 手';
@@ -510,6 +550,7 @@ function analyze(bars, decimals = state.decimal) {
   const close = bars[last].close;
   const atr = bars[last].atr;
   const minSpan = Math.max(23, Math.round(n * 0.16));
+  const recentTouch = Math.max(22, Math.min(80, Math.round(n * 0.24)));
   const gap = Math.max(7, Math.floor(n * 0.027));
   const pivots = findPivots(bars);
 
@@ -529,42 +570,54 @@ function analyze(bars, decimals = state.decimal) {
     return found;
   }
 
+  const majorHigh = pivots.high.reduce((peak, point) => !peak || point.value > peak.value ? point : peak, null);
+
   function assess(points, m, b, side, spanRequired) {
     const touches = contacts(points, m, b);
     if (touches.length < 2) return null;
     const start = touches[0].i;
     const end = touches.at(-1).i;
     const span = end - start;
-    if (span < spanRequired) return null;
+    const projected = b + m * last;
+    if (span < spanRequired || last - end > recentTouch || projected <= 0) return null;
     let violations = 0;
     let wickViolations = 0;
+    const sign = side === 'high' ? 1 : -1;
     for (let i = start; i <= end; i++) {
       const bar = bars[i];
       const y = b + m * i;
-      const sign = side === 'high' ? 1 : -1;
       const band = tolerance(bar, y);
       if (sign * (bar.close - y) > band) violations++;
       if (sign * (bar[side] - y) > band * 1.7) wickViolations++;
     }
     if (violations / (span + 1) > 0.12 || wickViolations / (span + 1) > 0.20) return null;
+    // Leave fresh crossings visible, and retire lines that failed to hold for several sessions.
+    let breached = 0;
+    for (let i = end + 1; i <= last - 3; i++) {
+      const bar = bars[i];
+      const y = b + m * i;
+      breached = sign * (bar.close - y) > tolerance(bar, y) ? breached + 1 : 0;
+      if (breached >= 8) return null;
+    }
     const fit = touches.reduce((sum, point) => sum + 1 - point.error, 0);
-    const distance = Math.abs(b + m * last - close) / Math.max(atr, 0.01);
+    const distance = Math.abs(projected - close) / Math.max(atr, 0.01);
+    const peakBonus = side === 'high' && touches.some(point => point.i === majorHigh?.i) ? 2.5 : 0;
     const score = touches.length * 2.1 + fit * 0.65 + span / n * 8 + end / n * 4
-      - (violations * 2 + wickViolations) / (span + 1) * 9 - Math.min(distance, 24) * 0.12;
+      + peakBonus - (violations * 2 + wickViolations) / (span + 1) * 9
+      - Math.min(distance, 24) * 0.34 - (last - end) / recentTouch * 2;
     return { m, b, start, end, touches, score };
   }
 
-  function sloped(side, direction) {
-    const points = pivots[side];
+  function sloped(side, direction, points = pivots[side], spanRequired = minSpan, moveInAtr = 1.1) {
     const candidates = [];
     for (let a = 0; a < points.length; a++) {
       for (let z = a + 1; z < points.length; z++) {
         const first = points[a], second = points[z];
         const span = second.i - first.i;
-        if (span < minSpan || direction * (second.value - first.value) < 1.1 * (bars[first.i].atr + bars[second.i].atr) / 2) continue;
+        if (span < spanRequired || direction * (second.value - first.value) < moveInAtr * (bars[first.i].atr + bars[second.i].atr) / 2) continue;
         const m = (second.value - first.value) / span;
         const b = first.value - m * first.i;
-        const candidate = assess(points, m, b, side, minSpan);
+        const candidate = assess(points, m, b, side, spanRequired);
         if (candidate) candidates.push(candidate);
       }
     }
@@ -595,26 +648,37 @@ function analyze(bars, decimals = state.decimal) {
   }
 
   const descending = sloped('high', -1);
-  let main = descending[0] || null;
-  let channel = null;
-  for (const upper of descending.slice(0, 12)) {
-    if (upper.score < main.score * 0.85) break;
-    const points = pivots.low.filter(point => point.i >= upper.start);
-    let lower = null;
+  const fromPeak = descending.find(line => line.start === majorHigh?.i);
+  const main = fromPeak || descending[0] || null;
+
+  function parallel(base, side) {
+    if (!base) return null;
+    const points = pivots[side].filter(point => point.i >= base.start);
+    const direction = side === 'high' ? 1 : -1;
+    let best = null;
     for (const point of points) {
-      const b = point.value - upper.m * point.i;
-      if (upper.b - b < 1.5 * bars[point.i].atr) continue;
-      const candidate = assess(points, upper.m, b, 'low', Math.max(20, Math.round(minSpan * 0.75)));
+      const b = point.value - base.m * point.i;
+      if (direction * (b - base.b) < 1.5 * bars[point.i].atr) continue;
+      const candidate = assess(points, base.m, b, side, Math.max(18, Math.round((base.end - base.start) * 0.18)));
       if (!candidate) continue;
-      const overlap = Math.min(candidate.end, upper.end) - Math.max(candidate.start, upper.start);
-      if (overlap >= Math.max(14, minSpan * 0.4) && (!lower || candidate.score > lower.score)) lower = candidate;
+      const overlap = Math.min(candidate.end, base.end) - Math.max(candidate.start, base.start);
+      if (overlap >= 14 && (!best || candidate.score > best.score)) best = candidate;
     }
-    if (lower) {
-      main = upper;
-      channel = lower;
-      break;
-    }
+    return best;
   }
+  const phaseLows = fromPeak ? pivots.low.filter(point => point.i > main.start) : [];
+  const lowerChannel = parallel(main, 'low');
+  const secondary = !lowerChannel && fromPeak && sloped('low', -1, phaseLows, Math.max(23, Math.round((last - main.start) * 0.18)))
+    .find(line => lineAt(line, last) < lineAt(main, last));
+  const channel = lowerChannel || secondary || null;
+  const rise = (fromPeak && sloped('low', 1, phaseLows, Math.max(23, Math.round((last - main.start) * 0.3)), 0.55)[0])
+    || sloped('low', 1)[0] || null;
+  const riseTop = parallel(rise, 'high') || (fromPeak && rise && sloped('high', 1, pivots.high.filter(point => point.i > rise.start), 14, 0.35)
+    .find(line => lineAt(line, last) > lineAt(rise, last))) || null;
+  const structure = fromPeak ? {
+    start: Math.max(-1, majorHigh.i - 30), peak: majorHigh,
+    low: phaseLows.reduce((lowest, point) => !lowest || point.value < lowest.value ? point : lowest, null)
+  } : null;
   const lows = horizontal('low');
   const highs = horizontal('high');
   const below = lows.filter(level => level.b <= close);
@@ -656,7 +720,8 @@ function analyze(bars, decimals = state.decimal) {
 
   const floors = below.filter(level => level !== key).sort((a, b) => b.b - a.b);
   const floor = floors.find(level => level !== box?.bottom) || floors[0] || null;
-  const trends = [main, channel, sloped('low', 1)[0] || null, key].map((line, i) => line && { ...line, ...TREND_TYPES[i] });
+  const trends = [main, channel, rise, key, riseTop].map((line, i) => line && { ...line, ...TREND_TYPES[i] });
+  if (channel === secondary && secondary) trends[1].name = '次级下降线';
   const levels = [box && { ...box.bottom, start: box.start, end: box.end }, floor, pressure]
     .map((line, i) => line && { ...line, ...LEVEL_TYPES[i] });
   const crossings = [];
@@ -684,6 +749,15 @@ function analyze(bars, decimals = state.decimal) {
   const nextResistance = resistance && resistances.concat(above.map(line => ({ value: line.b, name: '历史压力位' })))
     .sort((a, b) => a.value - b.value)
     .find(point => point.value - resistance.value > tolerance(bars[last], close));
+  const upper = structure && riseTop && resistances.find(point => point.name === TREND_TYPES[4].name);
+  const lower = structure && rise && supports.find(point => point.name === TREND_TYPES[2].name);
+  const breakoutLevel = upper || resistance;
+  const breakdownLevel = lower || support;
+  const upperTarget = upper ? pivots.high.filter(point => point.i > structure.peak.i)
+    .map(point => ({ value: point.value, name: '历史波段高点' })).sort((a, b) => a.value - b.value)
+    .find(point => point.value - upper.value > Math.max(atr, tolerance(bars[last], close))) : nextResistance;
+  const lowerTargets = lower ? supports.filter(point => lower.value - point.value > tolerance(bars[last], close)) : [];
+  const lowerTarget = lower ? lowerTargets.find(point => point.name === TREND_TYPES[3].name) || lowerTargets[0] : nextSupport;
   const insideBox = box && close >= box.bottom.b && close <= box.top.b;
   const bandLow = insideBox ? box.bottom.b : support?.value;
   const bandHigh = insideBox ? box.top.b : resistance?.value;
@@ -692,17 +766,17 @@ function analyze(bars, decimals = state.decimal) {
     { key: 'retest', name: '缩量回踩', color: '#7ad9cb', points: support ? [
       { label: '回踩', value: support.value }, { label: '反弹观察', value: resistance?.value > close ? resistance.value : close }
     ] : [], support, nextSupport, resistance },
-    { key: 'breakout', name: '放量突破', color: '#ff7780', points: resistance ? [
-      { label: '上破', value: resistance.value }, ...(nextResistance ? [{ label: '下一压力', value: nextResistance.value }] : [])
-    ] : [], resistance, nextResistance },
+    { key: 'breakout', name: '放量突破', color: '#ff5965', points: breakoutLevel ? [
+      { label: '上破', value: breakoutLevel.value }, ...(upperTarget ? [{ label: '下一压力', value: upperTarget.value }] : [])
+    ] : [], resistance: breakoutLevel, nextResistance: upperTarget },
     { key: 'range', name: '区间震荡', color: '#a9a3ff', points: range ? [
       { label: '下沿', value: range[0] }, { label: '上沿', value: range[1] }, { label: '再测下沿', value: range[0] }
     ] : [], range },
-    { key: 'breakdown', name: '放量跌破', color: '#f6d855', points: support ? [
-      { label: '跌破', value: support.value }, ...(nextSupport ? [{ label: '下一支撑', value: nextSupport.value }] : [])
-    ] : [], support, nextSupport }
+    { key: 'breakdown', name: '放量跌破', color: '#f6d855', points: breakdownLevel ? [
+      { label: '跌破', value: breakdownLevel.value }, ...(lowerTarget ? [{ label: '下一支撑', value: lowerTarget.value }] : [])
+    ] : [], support: breakdownLevel, nextSupport: lowerTarget }
   ];
-  return { trends, levels, box, crossings, paths };
+  return { trends, levels, box, crossings, paths, structure };
 }
 
 let searchVersion = 0;
@@ -787,11 +861,17 @@ async function fetchStockHistory(symbol, adjustment, limit, signal) {
     secid: symbol, fields1: 'f1,f2,f3,f4,f5,f6', fields2: 'f51,f52,f53,f54,f55,f56',
     klt: '101', fqt: adjustment, end: '20500101', lmt: limit
   });
-  const response = await fetch(url, { signal, cache: 'no-store' });
-  if (!response.ok) throw new Error('行情接口返回 HTTP ' + response.status);
-  const payload = await response.json();
-  const data = payload.data;
-  if (payload.rc !== 0 || !data?.klines?.length) throw new Error('行情接口未返回日线');
+  let data;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(2500)]), cache: 'no-store' });
+    if (!response.ok) throw new Error('东方财富日线 HTTP ' + response.status);
+    const payload = await response.json();
+    if (payload.rc !== 0 || !payload.data?.klines?.length) throw new Error('东方财富未返回日线');
+    data = { ...payload.data, source: '东方财富' };
+  } catch (error) {
+    if (signal.aborted) throw signal.reason;
+    data = await publicStockHistory(symbol, adjustment, limit, signal);
+  }
   const bars = data.klines.map(row => {
     const [date, ...values] = row.split(',');
     const [open, close, high, low, vol] = values.map(value => value ? Number(value) : NaN);
@@ -837,7 +917,7 @@ async function loadStock(symbol, automatic = false) {
     if (state.request !== request) return;
   } catch (error) {
     if (state.request !== request) return;
-    const detail = error.name === 'TimeoutError' ? '请求超时' : error.message === 'Failed to fetch' ? '无法连接东方财富行情' : error.message;
+    const detail = error.name === 'TimeoutError' ? '请求超时' : error.message === 'Failed to fetch' ? '行情源暂时无法连接' : error.message;
     state.request = null;
     state.checkedAt = startedAt;
     if (automatic) {
@@ -867,7 +947,7 @@ async function loadStock(symbol, automatic = false) {
   state.decimal = Math.max(0, Math.min(4, data.decimal ?? 2));
   state.loadedSymbol = symbol;
   state.loadedAt = Date.now();
-  $('stockFreshness').textContent = '自动刷新 · 检查于 ' + stockClock(state.loadedAt).slice(11, 19);
+  $('stockFreshness').textContent = data.source + '日线 · 自动刷新 · 检查于 ' + stockClock(state.loadedAt).slice(11, 19);
   state.loadedAdjustment = adjustment;
   if (!automatic) $('query').value = '';
   $('stockName').textContent = data.name;
@@ -951,7 +1031,7 @@ function renderNotes() {
     const summary = document.createElement('summary');
     const sub = document.createElement('p');
     sub.className = 'trend-sub';
-    summary.innerHTML = '<i class="swatch"></i><span class="trend-title">' + type.name + '</span><span class="value">' +
+    summary.innerHTML = '<i class="swatch"></i><span class="trend-title">' + (line?.name || type.name) + '</span><span class="value">' +
       (line ? price(lineAt(line, last)) : '—') + '</span>';
     summary.append(sub);
     details.append(summary);
@@ -966,7 +1046,10 @@ function renderNotes() {
         button.type = 'button';
         button.textContent = state.bars[point.i].date + ' ' + price(point.value);
         button.onclick = () => {
-          if (state.view && (point.i < state.view.start || point.i > state.view.end)) state.view = null;
+          if (point.i < state.chart.xStart || point.i > state.chart.xEnd) {
+            state.focusStructure = false;
+            state.view = null;
+          }
           state.hover = point.i;
           renderOhlc();
           draw();
@@ -1009,9 +1092,12 @@ function renderNotes() {
     '</p><p>' + guidance.action + '</p>' +
     (ranges.length ? '<p><small>' + [...ranges, pathReference].filter(Boolean).join(' · ') + '</small></p>' : '');
 
+  const dualAvailable = Boolean(state.structure && dualScenarios().length === 2);
+  $('dualScenario').hidden = !dualAvailable;
+  $('dualScenario').setAttribute('aria-pressed', dualAvailable && state.dualPaths);
   $('scenarioChoices').innerHTML = orderedPaths.map(path =>
     '<button type="button" data-path="' + path.key + '" style="--tone:' + path.color + '" aria-pressed="' +
-    (path.key === state.scenarioKey) + '"' + (path === match ? ' data-volume-match' : '') + (path.points.length ? '' : ' disabled title="缺少参考价位"') + '>' + path.name + '<span class="scenario-percent">' + percentage(path) + '</span></button>').join('');
+    (!(dualAvailable && state.dualPaths) && path.key === state.scenarioKey) + '"' + (path === match ? ' data-volume-match' : '') + (path.points.length ? '' : ' disabled title="缺少参考价位"') + '>' + path.name + '<span class="scenario-percent">' + percentage(path) + '</span></button>').join('');
   const heavy = '首根越界日成交量 ≥ 前5日均量 ' + VOLUME_RULE.high.toFixed(2) + ' 倍';
   const light = '回踩日成交量 ≤ 前5日均量 ' + VOLUME_RULE.low.toFixed(2) + ' 倍';
   $('paths').innerHTML = orderedPaths.map(path => {
@@ -1050,8 +1136,10 @@ function renderNotes() {
 
 $('scenarioChoices').addEventListener('click', event => {
   const button = event.target.closest('button');
-  if (!button || button.dataset.path === state.scenarioKey) return;
+  if (!button || (!state.dualPaths && button.dataset.path === state.scenarioKey)) return;
+  state.dualPaths = false;
   state.scenarioKey = button.dataset.path;
+  $('dualScenario').setAttribute('aria-pressed', 'false');
   if (state.view?.end <= state.bars.length - 0.5) state.view = null;
   for (const choice of $('scenarioChoices').children) {
     choice.setAttribute('aria-pressed', String(choice === button));
@@ -1059,6 +1147,23 @@ $('scenarioChoices').addEventListener('click', event => {
   for (const card of $('paths').children) {
     card.classList.toggle('current', card.dataset.path === state.scenarioKey);
   }
+  draw();
+});
+
+function dualScenarios() {
+  return state.paths.filter(path => (path.key === 'breakout' || path.key === 'breakdown') && path.points.length);
+}
+
+$('dualScenario').addEventListener('click', () => {
+  state.dualPaths = !state.dualPaths;
+  if (state.view?.end <= state.bars.length - 0.5) state.view = null;
+  renderNotes();
+  draw();
+});
+
+$('focusView').addEventListener('click', () => {
+  state.focusStructure = !state.focusStructure;
+  state.view = null;
   draw();
 });
 
@@ -1153,14 +1258,21 @@ function draw() {
   const lastX = last + 0.5;
   const horizon = Math.max(Number($('projection').value), Math.ceil((state.activeCross?.i ?? 0) - last) + 6);
   const fullEnd = last + horizon + 0.5;
-  const { start: xStart, end: xEnd } = state.view ?? { start: -1, end: fullEnd };
+  const focused = Boolean(state.structure && state.focusStructure);
+  const { start: xStart, end: xEnd } = state.view ?? { start: focused ? state.structure.start : -1, end: fullEnd };
+  $('focusView').hidden = !state.structure || state.structure.start <= -1;
+  $('focusView').textContent = focused ? '显示全部' : '聚焦结构';
+  $('focusView').setAttribute('aria-pressed', focused);
   const step = (right - left) / (xEnd - xStart);
   const x = i => left + (i - xStart) * step;
-  const scenario = state.paths.find(path => path.key === state.scenarioKey);
-  const projected = scenario.points.map((point, index) => ({
-    ...point, i: last + horizon * (index + 1) / (scenario.points.length + 1)
-  }));
-  const visiblePoints = projected.filter(point => point.i >= xStart && point.i <= xEnd);
+  const pair = state.structure && state.dualPaths ? dualScenarios() : [];
+  const dual = pair.length === 2;
+  const scenarios = dual ? pair : [state.paths.find(path => path.key === state.scenarioKey)];
+  const projected = scenarios.map(scenario => scenario.points.map((point, index) => ({
+    ...point, color: scenario.color,
+    i: last + horizon * (dual && scenario.points.length === 2 ? (index ? 0.88 : 0.37) : (index + 1) / (scenario.points.length + 1))
+  })));
+  const visiblePoints = projected.flat().filter(point => point.i >= xStart && point.i <= xEnd);
   const firstVisible = Math.max(0, Math.ceil(xStart - 0.5));
   const lastVisible = Math.min(last, Math.floor(xEnd + 0.5));
   const visibleBars = bars.slice(firstVisible, lastVisible + 1);
@@ -1297,7 +1409,8 @@ function draw() {
     ctx.fillRect(x(start), y(ceiling.b), x(end) - x(start), y(bottom.b) - y(ceiling.b));
     ctx.strokeRect(x(start), y(ceiling.b), x(end) - x(start), y(bottom.b) - y(ceiling.b));
   }
-  if (showClose) segment(x(last), closeY, right, closeY, '#6c85a155');
+  if (showClose) segment(focused ? left : x(last), closeY, right, closeY,
+    focused ? '#45cfb895' : '#6c85a155', 1, focused ? [2, 4] : []);
   const horizontalValues = new Set();
   for (const level of state.levels.filter(Boolean)) {
     if (level.start > xEnd || horizontalValues.has(level.b)) continue;
@@ -1306,7 +1419,7 @@ function draw() {
   }
   for (const line of state.trends.filter(Boolean)) {
     if (line.start > xEnd) continue;
-    segment(x(line.start), y(lineAt(line, line.start)), right, y(lineAt(line, xEnd)), line.color, w > 600 ? 2.5 : 1.8);
+    segment(x(line.start), y(lineAt(line, line.start)), right, y(lineAt(line, xEnd)), line.color, w > 600 ? 3.1 : 1.8);
     for (const point of line.touches) {
       if (point.i < xStart || point.i > xEnd) continue;
       ctx.beginPath();
@@ -1320,20 +1433,22 @@ function draw() {
   }
 
   if (xEnd > last) {
-    let previous = { i: last, value: close };
-    for (const point of projected) {
-      segment(x(previous.i), y(previous.value), x(point.i), y(point.value), scenario.color, 2, [5, 4]);
-      if (point === projected.at(-1)) {
-        arrowTip(x(previous.i), y(previous.value), x(point.i), y(point.value), scenario.color, 8);
+    for (const path of projected) {
+      let previous = { i: last, value: close };
+      for (const point of path) {
+        segment(x(previous.i), y(previous.value), x(point.i), y(point.value), point.color, dual ? 2.4 : 2, [5, 4]);
+        if (point === path.at(-1)) {
+          arrowTip(x(previous.i), y(previous.value), x(point.i), y(point.value), point.color, 8);
+        }
+        previous = point;
       }
-      previous = point;
     }
     for (const point of visiblePoints) {
       ctx.beginPath();
       ctx.arc(x(point.i), y(point.value), 3.7, 0, Math.PI * 2);
       ctx.fillStyle = '#0b121e';
       ctx.fill();
-      ctx.strokeStyle = scenario.color;
+      ctx.strokeStyle = point.color;
       ctx.lineWidth = 1.4;
       ctx.stroke();
     }
@@ -1377,8 +1492,47 @@ function draw() {
       });
   };
 
+  if (dual && w >= 780 && xEnd > last) {
+    const box = { x: right - 266, y: top + 14, width: 252, height: 60 };
+    if (!coversPrice(box)) {
+      labelBoxes.push(box);
+      ctx.beginPath();
+      ctx.roundRect(box.x, box.y, box.width, box.height, 7);
+      ctx.fillStyle = '#101925f5';
+      ctx.fill();
+      ctx.strokeStyle = '#435368';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.font = '650 12px "PingFang SC","Microsoft YaHei",system-ui,sans-serif';
+      ctx.textAlign = 'left';
+      scenarios.forEach((scenario, index) => {
+        const lineY = box.y + 22 + index * 23;
+        ctx.fillStyle = scenario.color;
+        const up = scenario.key === 'breakout';
+        ctx.fillText(up ? '上破情景' : '下破情景', box.x + 11, lineY);
+        ctx.fillStyle = '#dbe5f3';
+        const [trigger, target] = scenario.points;
+        ctx.fillText((up ? '放量站稳 ' : '放量跌破 ') + price(trigger.value) +
+          (target ? ' → 看 ' + price(target.value) : ''), box.x + 75, lineY);
+      });
+    }
+  }
+
   ctx.font = axisFont;
   ctx.textAlign = 'left';
+  if (state.structure) {
+    for (const [index, anchor] of [state.structure.peak, state.structure.low].entries()) {
+      if (!anchor || anchor.i < xStart || anchor.i > xEnd) continue;
+      const xp = x(anchor.i), yp = y(anchor.value);
+      const text = price(anchor.value);
+      const box = { x: xp + 11, y: index ? yp + 6 : yp - 20, width: ctx.measureText(text).width + 6, height: 16 };
+      if (box.x + box.width > right || box.y < top || box.y + box.height > priceBottom || overlapsLabel(box)) continue;
+      labelBoxes.push(box);
+      segment(xp + 2, yp, box.x + 1, box.y + 8, '#d5e2f2', 1);
+      ctx.fillStyle = '#e5eefb';
+      ctx.fillText(text, box.x + 2, box.y + 12);
+    }
+  }
   for (const point of visiblePoints) {
     const xp = x(point.i), yp = y(point.value);
     const text = price(point.value);
@@ -1391,17 +1545,17 @@ function draw() {
     });
     if (ly === undefined) continue;
     labelBoxes.push({ x: lx, y: ly, width, height: 16 });
-    if (Math.abs(ly + 8 - yp) > 2) segment(xp + 3, yp, lx, ly + 8, scenario.color);
+    if (Math.abs(ly + 8 - yp) > 2) segment(xp + 3, yp, lx, ly + 8, point.color);
     ctx.fillStyle = '#182638';
     ctx.fillRect(lx, ly, width, 16);
-    ctx.strokeStyle = scenario.color;
+    ctx.strokeStyle = point.color;
     ctx.lineWidth = 1;
     ctx.strokeRect(lx + 0.5, ly + 0.5, width - 1, 15);
-    ctx.fillStyle = scenario.color;
+    ctx.fillStyle = point.color;
     ctx.fillText(text, lx + 4, ly + 11.5);
   }
 
-  const calloutPositions = [[0.42, -1], [0.23, 1], [0.70, 1], [0.20, 1]];
+  const calloutPositions = [[0.45, -1], [0.32, 1], [0.63, 1], [0.20, 1], [0.48, -1]];
   const calloutHeight = w >= 650 ? 27 : 20;
   ctx.font = (w >= 650 ? '650 15px' : '600 11px') + ' "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
   ctx.textAlign = 'left';
@@ -1530,6 +1684,7 @@ function setChartView(event, span, proposedStart) {
   const { xStart, xEnd, fullEnd } = state.chart;
   const start = Math.max(-1, Math.min(fullEnd - span, proposedStart));
   if (span !== xEnd - xStart || start !== xStart) {
+    if (span === fullEnd + 1) state.focusStructure = false;
     state.view = span === fullEnd + 1 ? null : { start, end: start + span };
     draw();
   }
@@ -1541,7 +1696,7 @@ let didDrag = false;
 canvas.addEventListener('pointerdown', event => {
   if (!event.isPrimary || event.button !== 0 || event.pointerType === 'touch') return;
   didDrag = false;
-  if (!state.view || plotOffset(event) === null) return;
+  if (plotOffset(event) === null || state.chart.xEnd - state.chart.xStart >= state.chart.fullEnd + 1) return;
   drag = { pointerId: event.pointerId, lastX: event.clientX };
   canvas.setPointerCapture(event.pointerId);
 });
@@ -1925,12 +2080,136 @@ function environmentLabel(environment) {
   return 'A 股指数 ' + signedMove(environment.domestic) + ' · 海外市场 ' + signedMove(environment.global);
 }
 
+function buildTrendSnapshot(bars, decimal, date, window = 360) {
+  const closed = bars.filter(bar => bar.date < date).slice(-window);
+  if (closed.length < 60) return null;
+  const reference = closed.at(-1);
+  const fit = analyze(closed, decimal);
+  const entries = [...fit.trends, ...fit.levels, fit.box && {
+    ...fit.box.top, key: 'box-top', name: '箱体上沿', side: 'high'
+  }].filter(Boolean);
+  const lines = [];
+  for (const line of entries) {
+    const prior = Number(lineAt(line, closed.length - 1).toFixed(decimal));
+    const price = Number(lineAt(line, closed.length).toFixed(decimal));
+    if (!(price > 0 && prior > 0)) continue;
+    const same = lines.find(item => item.side === line.side && item.price === price && item.prior === prior);
+    if (same) same.name += ' / ' + line.name;
+    else lines.push({ key: line.key, name: line.name, side: line.side, prior, price });
+  }
+  return { date, referenceDate: reference.date, referenceClose: reference.close, lines, seen: [] };
+}
+
+function trendSignal(line, previous, price) {
+  if (line.side === 'high') return previous <= line.price && price > line.price ? 'up' : null;
+  if (previous >= line.price && price < line.price) return 'down';
+  if (previous < line.price && price > line.price) return 'reclaim';
+  return price >= line.price && price <= line.price * 1.01 + 1e-9 ? 'near' : null;
+}
+
+function trendBasisMatches(referenceClose, quoteClose, decimal) {
+  return !Number.isFinite(quoteClose) || quoteClose <= 0 ||
+    Math.abs(referenceClose - quoteClose) <= Math.max(1.1 * 10 ** -decimal, quoteClose * 0.001);
+}
+
+function trendCloseResult(type, price, threshold) {
+  return type === 'down'
+    ? (price < threshold ? '收盘失守' : '收盘已收回')
+    : (price > threshold ? '收盘站上' : '收盘未站上');
+}
+
+let publicHistoryRequest = 0;
+
+function publicTicker(symbol) {
+  const [market, code] = symbol.split('.');
+  return (market === '1' ? 'sh' : /^(920|[48])/.test(code) ? 'bj' : 'sz') + code;
+}
+
+function publicSinaHistory(symbol, limit, signal) {
+  return new Promise((resolve, reject) => {
+    const name = '__workbenchKline' + ++publicHistoryRequest;
+    const script = document.createElement('script');
+    const url = new URL('https://quotes.sina.cn/cn/api/jsonp_v2.php/var%20' + name + '=/CN_MarketDataService.getKLineData');
+    url.search = new URLSearchParams({ symbol: publicTicker(symbol), scale: 240, ma: 'no', datalen: limit });
+    const timeout = setTimeout(() => finish(new Error('新浪日线请求超时')), 6000);
+    const onAbort = () => finish(signal.reason);
+    function finish(error, rows) {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', onAbort);
+      if (!Reflect.deleteProperty(window, name)) window[name] = undefined;
+      script.remove();
+      if (error) reject(error);
+      else resolve(rows);
+    }
+    if (signal?.aborted) {
+      finish(signal.reason);
+      return;
+    }
+    script.charset = 'gbk';
+    script.onload = () => Array.isArray(window[name]) && window[name].length
+      ? finish(null, window[name]) : finish(new Error('新浪未返回日线'));
+    script.onerror = () => finish(new Error('新浪日线暂时无法连接'));
+    script.src = url.href;
+    signal?.addEventListener('abort', onAbort, { once: true });
+    document.head.append(script);
+  });
+}
+
+async function publicTencentQuotes(symbols, signal) {
+  const lookup = new Map(symbols.map(symbol => [publicTicker(symbol), symbol]));
+  if (!lookup.size) return [];
+  const url = 'https://qt.gtimg.cn/q=' + [...lookup.keys()].join(',');
+  const response = await fetch(url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000), cache: 'no-store' });
+  if (!response.ok) throw new Error('备用行情 HTTP ' + response.status);
+  const text = new TextDecoder('gb18030').decode(await response.arrayBuffer());
+  return [...text.matchAll(/v_([a-z]+\d+)="([^"]*)"/g)].flatMap(([, ticker, line]) => {
+    const row = line.split('~');
+    const date = row[30]?.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+    const at = date ? Date.parse(date[1] + '-' + date[2] + '-' + date[3] + 'T' + date[4] + ':' + date[5] + ':' + date[6] + '+08:00') : NaN;
+    return lookup.has(ticker) ? [{ symbol: lookup.get(ticker), name: row[1], price: Number(row[3]), volume: Number(row[6]), at }] : [];
+  });
+}
+
+async function publicTencentHistory(symbol, limit, adjustment, signal) {
+  const code = publicTicker(symbol);
+  const url = new URL('https://web.ifzq.gtimg.cn/appstock/app/' + (adjustment ? 'fqkline/get' : 'kline/kline'));
+  url.searchParams.set('param', [code, 'day', '', '', limit, ...(adjustment ? ['qfq'] : [])].join(','));
+  const response = await fetch(url, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(6000)]) : AbortSignal.timeout(6000), cache: 'no-store' });
+  if (!response.ok) throw new Error('腾讯日线 HTTP ' + response.status);
+  const payload = await response.json();
+  const stock = payload.data?.[code];
+  const rows = adjustment ? stock?.qfqday : stock?.day;
+  if (payload.code !== 0 || !rows?.length) throw new Error(adjustment ? '前复权日线暂不可用，可切换到不复权。' : '腾讯未返回日线');
+  return { rows: rows.slice(-limit), name: stock.qt?.[code]?.[1], decimal: 2 };
+}
+
+async function publicStockHistory(symbol, adjustment, limit, signal) {
+  const [market, code] = symbol.split('.');
+  if (adjustment === '1') {
+    const { rows, name, decimal } = await publicTencentHistory(symbol, limit, true, signal);
+    return { code, market: Number(market), name: name || code, decimal, source: '腾讯行情',
+      klines: rows.map(row => row.slice(0, 6).join(',')) };
+  }
+  const [history, meta] = await Promise.allSettled([
+    publicSinaHistory(symbol, limit, signal), publicTencentQuotes([symbol], signal)
+  ]);
+  if (history.status === 'fulfilled') {
+    return { code, market: Number(market), name: meta.value?.[0]?.name || code, decimal: 2, source: '新浪财经',
+      klines: history.value.map(row => [row.day, row.open, row.close, row.high, row.low, row.volume / 100].join(',')) };
+  }
+  if (signal.aborted) throw signal.reason;
+  const { rows, name, decimal } = await publicTencentHistory(symbol, limit, false, signal);
+  return { code, market: Number(market), name: name || code, decimal, source: '腾讯行情',
+    klines: rows.map(row => row.slice(0, 6).join(',')) };
+}
+
 </script>
 <aside id="trendToast" class="trend-toast" hidden>
   <p id="trendToastText" role="status"></p>
   <button type="button" class="dash-text-button" id="trendToastOpen">查看记录</button>
   <button type="button" class="dash-text-button" id="trendToastClose">关闭</button>
 </aside>
+<script type="application/json" id="publicVolumeSeed">{"date":"2026-11-11","sessions":["2026-07-22","2026-07-23","2026-07-24","2026-07-27","2026-07-28","2026-07-29","2026-07-30","2026-07-31","2026-08-03","2026-08-04","2026-08-05","2026-08-06","2026-08-07","2026-08-10","2026-08-11","2026-08-12","2026-08-13","2026-08-14","2026-08-17","2026-08-18","2026-08-19","2026-08-20","2026-08-21","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-31","2026-09-01","2026-09-02","2026-09-03","2026-09-04","2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-14","2026-09-15","2026-09-16","2026-09-17","2026-09-18","2026-09-21","2026-09-22","2026-09-23","2026-09-24","2026-09-28","2026-09-29","2026-09-30","2026-10-08","2026-10-09","2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-19","2026-10-20","2026-10-21","2026-10-22","2026-10-23","2026-10-26","2026-10-27","2026-10-28","2026-10-29","2026-10-30","2026-11-02","2026-11-03","2026-11-04","2026-11-05","2026-11-06","2026-11-09","2026-11-10","2026-11-11"],"catalogueDate":"2026-11-11","total":5928,"failed":5,"stocks":[{"symbol":"0.000026","name":"飞亚达","limits":[5],"bars":[["2026-11-04",158477,18.11],["2026-11-05",139781.1,18.7],["2026-11-06",84200,18.35],["2026-11-09",146050.88,20.19],["2026-11-10",356091.09,21.05],["2026-11-11",307058.52,23.16]]},{"symbol":"0.000631","name":"顺发恒能","limits":[5],"bars":[["2026-11-04",111644.65,2.78],["2026-11-05",94187.53,2.8],["2026-11-06",456697.47,2.91],["2026-11-09",437548.15,2.89],["2026-11-10",232132.17,2.85],["2026-11-11",416611.18,3.14]]},{"symbol":"0.000407","name":"胜利股份","limits":[5],"bars":[["2026-11-04",178066.13,3.86],["2026-11-05",145041.13,3.87],["2026-11-06",170989.27,3.88],["2026-11-09",337421.98,4],["2026-11-10",174301,3.95],["2026-11-11",919245.2,4.35]]},{"symbol":"0.000545","name":"金浦钛业","limits":[5],"bars":[["2026-11-04",447335.98,1.94],["2026-11-05",370686.54,1.97],["2026-11-06",376700.88,1.92],["2026-11-09",337309.66,1.88],["2026-11-10",257147.94,1.9],["2026-11-11",593344.78,2.09]]},{"symbol":"0.000678","name":"襄阳轴承","limits":[5],"bars":[["2026-11-04",1568810.99,19.48],["2026-11-05",1490921.93,19.74],["2026-11-06",864015.72,17.77],["2026-11-09",1103654.79,17.51],["2026-11-10",705627.91,19.26],["2026-11-11",1718709.08,21.19]]},{"symbol":"0.000635","name":"英 力 特","limits":[5],"bars":[["2026-11-04",135619,7.94],["2026-11-05",213105.22,8.73],["2026-11-06",487333.63,9.5],["2026-11-09",422421.73,8.96],["2026-11-10",313997.05,9.28],["2026-11-11",388082.08,10.21]]},{"symbol":"0.001232","name":"嘉立创","limits":[5],"bars":[["2026-11-03",38621.32,149.71],["2026-11-04",48089.24,160],["2026-11-05",37198.66,160.86],["2026-11-06",21907.25,154.86],["2026-11-09",23107.37,158.89],["2026-11-10",38008.95,174.78],["2026-11-11",37461.75,179.66]]},{"symbol":"0.001331","name":"胜通能源","limits":[5],"bars":[["2026-11-04",153016.67,29.68],["2026-11-05",104172.41,29.87],["2026-11-06",83201.69,28.5],["2026-11-09",64776.3,31.35],["2026-11-10",173291.98,32.07],["2026-11-11",106490.12,35.28]]},{"symbol":"0.001339","name":"智微智能","limits":[5],"bars":[["2026-11-04",155225.29,57.1],["2026-11-05",138663.17,60.1],["2026-11-06",110354.5,55.8],["2026-11-09",92446.61,57.63],["2026-11-10",115280.78,63.39],["2026-11-11",288732.24,69.73]]},{"symbol":"0.001282","name":"三联锻造","limits":[5],"bars":[["2026-11-04",95749.07,17],["2026-11-05",161554.47,16.88],["2026-11-06",86900.75,16.11],["2026-11-09",94147.01,16.77],["2026-11-10",81327.05,17],["2026-11-11",122218.97,18.7]]},{"symbol":"0.002086","name":"东方海洋","limits":[5],"bars":[["2026-11-02",1741886.87,3.11],["2026-11-03",2305456.51,3.42],["2026-11-04",8051031.29,3.28],["2026-11-05",8379536.03,3.61],["2026-11-06",6727467.97,3.97],["2026-11-09",7420564.7,4.37],["2026-11-10",6169782.73,4.62],["2026-11-11",5892520.1,4.69]]},{"symbol":"0.002154","name":"报 喜 鸟","limits":[5],"bars":[["2026-11-04",486501.66,3.44],["2026-11-05",352827,3.44],["2026-11-06",270342,3.39],["2026-11-09",249416,3.42],["2026-11-10",647730.71,3.54],["2026-11-11",1019533.69,3.89]]},{"symbol":"0.002278","name":"神开股份","limits":[5],"bars":[["2026-11-04",171144,7.01],["2026-11-05",107317,7.17],["2026-11-06",72629.82,7.12],["2026-11-09",64265,7.18],["2026-11-10",51312.01,7.25],["2026-11-11",429701.79,7.98]]},{"symbol":"0.001379","name":"腾达科技","limits":[5],"bars":[["2026-11-03",32664.82,14.52],["2026-11-04",37215,14.5],["2026-11-05",30265.62,14.8],["2026-11-06",23023.78,14.41],["2026-11-09",29220.26,15.85],["2026-11-10",175312.92,17.44],["2026-11-11",168657.83,16.65]]},{"symbol":"0.002313","name":"日海智能","limits":[5,6],"bars":[["2026-11-03",140585,7.73],["2026-11-04",185633,8.04],["2026-11-05",324400,8.84],["2026-11-06",219659,8.37],["2026-11-09",181926.64,8.4],["2026-11-10",378388.36,9.24],["2026-11-11",317956.31,10.16]]},{"symbol":"0.002076","name":"星光股份","limits":[5],"bars":[["2026-11-04",948254,1.95],["2026-11-05",1696817.99,2.05],["2026-11-06",914314.99,1.95],["2026-11-09",762803.22,1.97],["2026-11-10",789125,2.02],["2026-11-11",1125280.2,2.22]]},{"symbol":"0.002160","name":"常铝股份","limits":[5],"bars":[["2026-11-04",188626.84,3.49],["2026-11-05",212464,3.62],["2026-11-06",781173.01,3.7],["2026-11-09",547864.03,3.64],["2026-11-10",654417.51,4],["2026-11-11",1231242.17,4.4]]},{"symbol":"0.002209","name":"达 意 隆","limits":[5,6],"bars":[["2026-11-03",43193,11.35],["2026-11-04",47258.56,11.39],["2026-11-05",42882,11.74],["2026-11-06",28992.32,11.69],["2026-11-09",36298,11.54],["2026-11-10",70347,12.69],["2026-11-11",26204.35,13.96]]},{"symbol":"0.002281","name":"光迅科技","limits":[5],"bars":[["2026-11-04",610578.81,98.23],["2026-11-05",449646.35,97.29],["2026-11-06",351828.47,91.3],["2026-11-09",277651.13,93.35],["2026-11-10",267076,94.48],["2026-11-11",397870.35,103.93]]},{"symbol":"0.002529","name":"海源复材","limits":[5],"bars":[["2026-11-04",127253,6.11],["2026-11-05",95895,6.72],["2026-11-06",551467.64,6.6],["2026-11-09",484382.52,6.25],["2026-11-10",290854,6.2],["2026-11-11",459047.12,6.82]]},{"symbol":"0.002362","name":"汉王科技","limits":[5],"bars":[["2026-11-04",98863,16.47],["2026-11-05",106442,16.8],["2026-11-06",80494,16.35],["2026-11-09",78258.12,16.52],["2026-11-10",97694.56,16.99],["2026-11-11",266026.84,18.69]]},{"symbol":"0.002110","name":"三钢闽光","limits":[5],"bars":[["2026-11-04",239526.04,2.79],["2026-11-05",193672,2.79],["2026-11-06",169412.22,2.75],["2026-11-09",159457.51,2.74],["2026-11-10",403864,2.74],["2026-11-11",518431.03,3.01]]},{"symbol":"0.002164","name":"宁波东力","limits":[5],"bars":[["2026-11-04",808588.41,17.81],["2026-11-05",859447.09,19.1],["2026-11-06",658413.07,18.68],["2026-11-09",817122.08,19.7],["2026-11-10",763753.87,19.92],["2026-11-11",630793.25,21.91]]},{"symbol":"0.002578","name":"闽发铝业","limits":[5],"bars":[["2026-11-03",802034.05,3.76],["2026-11-04",1076197.29,4.14],["2026-11-05",193136.2,4.55],["2026-11-06",1076869.5,5.01],["2026-11-09",1286386.06,5.51],["2026-11-10",3350264.88,6.06],["2026-11-11",2972532.72,6.08]]},{"symbol":"0.002425","name":"凯撒文化","limits":[5],"bars":[["2026-11-04",1059542.2,3.27],["2026-11-05",731881,3.3],["2026-11-06",653232,3.22],["2026-11-09",537038,3.16],["2026-11-10",432119.03,3.48],["2026-11-11",1506345.34,3.83]]},{"symbol":"0.002463","name":"沪电股份","limits":[5],"bars":[["2026-11-04",768995.97,85.95],["2026-11-05",1043715.51,81],["2026-11-06",792134.5,73.21],["2026-11-09",841738.16,77.1],["2026-11-10",689543.93,81.3],["2026-11-11",803574.64,89.43]]},{"symbol":"0.002713","name":"东易日盛","limits":[5],"bars":[["2026-11-04",143403.61,7.37],["2026-11-05",148622.15,7.64],["2026-11-06",134927.2,7.58],["2026-11-09",113420.95,7.72],["2026-11-10",80619.09,7.71],["2026-11-11",93654.19,8.48]]},{"symbol":"0.002148","name":"北纬科技","limits":[5],"bars":[["2026-11-04",108533.39,5.88],["2026-11-05",116762.8,6.02],["2026-11-06",96632.97,5.88],["2026-11-09",71348.1,5.82],["2026-11-10",94984.44,5.97],["2026-11-11",279875.96,6.57]]},{"symbol":"0.002886","name":"沃特股份","limits":[5],"bars":[["2026-11-04",178921,19.48],["2026-11-05",136413,19.77],["2026-11-06",94858,19.1],["2026-11-09",87002,19.45],["2026-11-10",146331.49,20.27],["2026-11-11",228946.25,22.3]]},{"symbol":"0.002384","name":"东山精密","limits":[5],"bars":[["2026-11-04",1988633.09,94.33],["2026-11-05",1806274.2,89.1],["2026-11-06",1524312.89,80.19],["2026-11-09",1310890.54,81.49],["2026-11-10",1239321.81,83.69],["2026-11-11",1430002.23,92.06]]},{"symbol":"0.002501","name":"*ST利源","limits":[5],"bars":[["2026-11-03",415047.2,1.1],["2026-11-04",265696,1.1],["2026-11-05",276467.02,1.1],["2026-11-06",370791,1.11],["2026-11-09",250271,1.09],["2026-11-10",1038058.38,1.2],["2026-11-11",758161.18,1.16]]},{"symbol":"0.002593","name":"日上集团","limits":[5],"bars":[["2026-11-04",193914,4.04],["2026-11-05",163146.5,4.1],["2026-11-06",144584,4.05],["2026-11-09",333165.4,4.12],["2026-11-10",379254.9,4.32],["2026-11-11",504718.4,4.75]]},{"symbol":"0.002520","name":"日发精机","limits":[5],"bars":[["2026-11-04",552726.43,6.17],["2026-11-05",456614,6.26],["2026-11-06",605356.25,6.35],["2026-11-09",464858.33,6.44],["2026-11-10",540379.03,6.6],["2026-11-11",561089.93,7.26]]},{"symbol":"0.002919","name":"名臣健康","limits":[5],"bars":[["2026-11-04",54864.05,16.44],["2026-11-05",37430,16.56],["2026-11-06",32820,16.04],["2026-11-09",33102,16],["2026-11-10",39875.8,16.69],["2026-11-11",93140.8,18.36]]},{"symbol":"0.002623","name":"亚玛顿","limits":[5,6],"bars":[["2026-10-27",129514.25,18.78],["2026-10-28",192833.12,18.79],["2026-10-29",141166.49,18.33],["2026-10-30",138618.68,17.53],["2026-11-02",90162.07,19.28],["2026-11-10",13339,21.21],["2026-11-11",8381.86,23.33]]},{"symbol":"0.002633","name":"申科股份","limits":[5],"bars":[["2026-11-04",25230,13.93],["2026-11-05",18668,14.07],["2026-11-06",32271,14.3],["2026-11-09",36165,14.44],["2026-11-10",33616,14.11],["2026-11-11",62041,15.52]]},{"symbol":"0.002708","name":"光洋股份","limits":[5],"bars":[["2026-11-04",1408905.68,19.54],["2026-11-05",1168106.29,20.69],["2026-11-06",826288.13,19.97],["2026-11-09",746905.52,21.97],["2026-11-10",160244.59,24.17],["2026-11-11",918371.8,26.59]]},{"symbol":"0.002861","name":"瀛通通讯","limits":[5,6],"bars":[["2026-11-03",39990,11.18],["2026-11-04",56134.2,11.58],["2026-11-05",72724.6,12.38],["2026-11-06",52674.3,11.94],["2026-11-09",40638,11.84],["2026-11-10",55234.6,13.02],["2026-11-11",26622,14.32]]},{"symbol":"0.002703","name":"浙江世宝","limits":[5],"bars":[["2026-11-04",285500.23,13.87],["2026-11-05",246948.35,14.1],["2026-11-06",210549.13,13.56],["2026-11-09",258403.83,14.06],["2026-11-10",594815.24,15.05],["2026-11-11",767367.82,16.56]]},{"symbol":"0.002913","name":"奥士康","limits":[5],"bars":[["2026-11-04",158560.44,57.3],["2026-11-05",98456.43,55.4],["2026-11-06",87108.47,53.11],["2026-11-09",77910.45,58.42],["2026-11-10",139432.05,59.33],["2026-11-11",94211.96,65.26]]},{"symbol":"0.002837","name":"英维克","limits":[5],"bars":[["2026-11-04",409575.17,38.82],["2026-11-05",357817.77,39.58],["2026-11-06",339030.53,37.33],["2026-11-09",221963.31,37.42],["2026-11-10",325090.4,39.38],["2026-11-11",471442.69,43.32]]},{"symbol":"0.002765","name":"蓝黛科技","limits":[5],"bars":[["2026-11-04",126678.39,6.49],["2026-11-05",206981,6.71],["2026-11-06",144046,6.51],["2026-11-09",148257,6.76],["2026-11-10",238391.13,7.09],["2026-11-11",516781.37,7.8]]},{"symbol":"0.002779","name":"中坚科技","limits":[5],"bars":[["2026-11-04",48969.08,80.5],["2026-11-05",46762.63,85.39],["2026-11-06",31980.4,81.4],["2026-11-09",69424.5,89],["2026-11-10",72294.81,91.36],["2026-11-11",114641.23,100.5]]},{"symbol":"0.300049","name":"福瑞医科","limits":[5],"bars":[["2026-10-29",55943.72,38.6],["2026-10-30",90981.9,37.72],["2026-11-02",122345.17,40.9],["2026-11-03",76494.38,38.5],["2026-11-04",146492.53,41.1],["2026-11-05",210830.2,49.32],["2026-11-06",205665.41,47.89],["2026-11-09",147358.9,46.81],["2026-11-10",101883.81,45.88],["2026-11-11",86111.92,44.9]]},{"symbol":"0.002795","name":"永和智控","limits":[5],"bars":[["2026-11-04",142320.42,6.5],["2026-11-05",140672,6.79],["2026-11-06",108033,6.55],["2026-11-09",79597.92,6.5],["2026-11-10",178374.84,6.9],["2026-11-11",301593.92,7.59]]},{"symbol":"0.002957","name":"科瑞技术","limits":[5],"bars":[["2026-11-04",160736.6,25.67],["2026-11-05",134102.89,26.08],["2026-11-06",112834.54,24.97],["2026-11-09",90917.43,25.23],["2026-11-10",107748.39,25.95],["2026-11-11",213606.08,28.55]]},{"symbol":"0.002980","name":"华盛昌","limits":[5],"bars":[["2026-11-04",118505.59,71.27],["2026-11-05",139195.9,70.32],["2026-11-06",110866.27,67.2],["2026-11-09",84122.8,68.46],["2026-11-10",84903.8,68.93],["2026-11-11",122723,75.82]]},{"symbol":"0.002975","name":"博杰股份","limits":[5],"bars":[["2026-11-04",128443.15,77.33],["2026-11-05",146445.41,80.56],["2026-11-06",113011.66,73.88],["2026-11-09",125742.72,78.54],["2026-11-10",89158.71,80.27],["2026-11-11",120339.31,88.3]]},{"symbol":"0.002916","name":"深南电路","limits":[5],"bars":[["2026-11-04",152959.56,225.6],["2026-11-05",150605.96,216],["2026-11-06",160067.1,199.92],["2026-11-09",118851.57,203.5],["2026-11-10",103255.25,208.2],["2026-11-11",128869.33,229.02]]},{"symbol":"0.002931","name":"锋龙股份","limits":[5],"bars":[["2026-11-04",171836.33,40.66],["2026-11-05",140592.75,41.77],["2026-11-06",91928.08,39.87],["2026-11-09",218180.97,43.86],["2026-11-10",85787.87,48.25],["2026-11-11",125121.96,53.08]]},{"symbol":"0.003032","name":"传智教育","limits":[5],"bars":[["2026-11-04",828464,9.35],["2026-11-05",672513,9.69],["2026-11-06",422637.2,9.42],["2026-11-09",335666,9.45],["2026-11-10",459516.02,10.1],["2026-11-11",905174.8,11.11]]},{"symbol":"0.300426","name":"华智数媒","limits":[5],"bars":[["2026-11-03",989670.25,9],["2026-11-04",1125946.1,10.35],["2026-11-05",1022906.95,10.28],["2026-11-06",677204.67,9.76],["2026-11-09",729106.15,9.56],["2026-11-10",1102348.36,11.47],["2026-11-11",974029.26,11.65]]},{"symbol":"0.300473","name":"德尔股份","limits":[5],"bars":[["2026-11-04",127435.95,37.77],["2026-11-05",124569.93,39.83],["2026-11-06",209402,42.51],["2026-11-09",228747.13,47.88],["2026-11-10",169751.99,48.99],["2026-11-11",280706.46,58.79]]},{"symbol":"0.300990","name":"同飞股份","limits":[5],"bars":[["2026-11-04",82288.09,70.69],["2026-11-05",73694.02,69.46],["2026-11-06",65117.18,65.88],["2026-11-09",55120.89,68.03],["2026-11-10",84138.22,72.82],["2026-11-11",111257.79,87.38]]},{"symbol":"0.300556","name":"丝路视觉","limits":[5],"bars":[["2026-11-03",225272.22,18.34],["2026-11-04",200559.19,18.51],["2026-11-05",227247.74,19],["2026-11-06",134939.99,18.3],["2026-11-09",156361,18.54],["2026-11-10",397232.74,22.25],["2026-11-11",366366.7,21.85]]},{"symbol":"0.301636","name":"泽润新能","limits":[5],"bars":[["2026-11-04",21553,36.42],["2026-11-05",45148.84,39.05],["2026-11-06",58897.67,41.74],["2026-11-09",47765.02,39.4],["2026-11-10",33332.15,39.33],["2026-11-11",83925.81,47.2]]},{"symbol":"1.600103","name":"青山纸业","limits":[5],"bars":[["2026-11-04",1306307.5,2.92],["2026-11-05",1195252.2,2.97],["2026-11-06",762389,2.9],["2026-11-09",729751.5,2.92],["2026-11-10",767217.2,2.98],["2026-11-11",1017450.62,3.28]]},{"symbol":"0.301486","name":"致尚科技","limits":[5],"bars":[["2026-11-04",70983.67,137.78],["2026-11-05",61163.1,135.82],["2026-11-06",56819.41,126],["2026-11-09",48895.57,130.83],["2026-11-10",50586.09,133.81],["2026-11-11",124498.2,160.57]]},{"symbol":"1.600228","name":"返利科技","limits":[5],"bars":[["2026-11-04",151884,8.67],["2026-11-05",127032,8.85],["2026-11-06",122686,8.63],["2026-11-09",96008,8.54],["2026-11-10",119502,8.88],["2026-11-11",224198,9.77]]},{"symbol":"1.600162","name":"香江控股","limits":[5],"bars":[["2026-11-04",1067270.52,2.99],["2026-11-05",1065941.4,3.19],["2026-11-06",815081.85,3.08],["2026-11-09",903928.07,3.2],["2026-11-10",830938.2,3.34],["2026-11-11",1069657.27,3.67]]},{"symbol":"0.301596","name":"瑞迪智驱","limits":[5],"bars":[["2026-11-04",27045.61,45.18],["2026-11-05",33100.39,47.64],["2026-11-06",24085.24,45.21],["2026-11-09",22017.33,46.25],["2026-11-10",29971.67,48.67],["2026-11-11",121617.68,58.4]]},{"symbol":"1.600539","name":"狮头股份","limits":[5],"bars":[["2026-10-29",80259,12.02],["2026-10-30",86152.99,11.62],["2026-11-02",80976,11.75],["2026-11-03",56690,11.39],["2026-11-04",75860,11.51],["2026-11-05",203315.83,12.66],["2026-11-06",181769.99,12.37],["2026-11-09",84046,12.5],["2026-11-10",79035.01,12.86],["2026-11-11",66427,12.68]]},{"symbol":"0.301052","name":"果麦文化","limits":[5],"bars":[["2026-11-04",341765.68,38.8],["2026-11-05",352319.81,40.92],["2026-11-06",307896.12,40.64],["2026-11-09",274041.05,38.76],["2026-11-10",286700.5,40.8],["2026-11-11",420884.53,48.96]]},{"symbol":"1.600629","name":"华建集团","limits":[5],"bars":[["2026-11-04",230752.71,13.82],["2026-11-05",238763.46,14.22],["2026-11-06",204749.25,14.07],["2026-11-09",152228.32,13.89],["2026-11-10",114627.29,13.81],["2026-11-11",397022.03,15.19]]},{"symbol":"1.600293","name":"三峡新材","limits":[5],"bars":[["2026-11-04",2668359.32,3.93],["2026-11-05",1869017.67,3.9],["2026-11-06",1304328.76,3.68],["2026-11-09",1839325.66,3.83],["2026-11-10",1261924.6,3.92],["2026-11-11",1403457.54,4.31]]},{"symbol":"1.600776","name":"东方通信","limits":[5],"bars":[["2026-11-04",136153.09,10.66],["2026-11-05",120814.58,10.83],["2026-11-06",321665.29,11.11],["2026-11-09",337239.54,12.22],["2026-11-10",701102.24,12.41],["2026-11-11",836561.35,13.65]]},{"symbol":"1.600327","name":"大东方","limits":[5],"bars":[["2026-11-04",1181610.17,4.2],["2026-11-05",1336662.98,4.46],["2026-11-06",1836295.29,4.91],["2026-11-09",1745042.54,5.4],["2026-11-10",634286.56,5.94],["2026-11-11",1035384.72,6.53]]},{"symbol":"1.600715","name":"文投控股","limits":[5],"bars":[["2026-11-04",8201508.65,2.47],["2026-11-05",7541041.23,2.52],["2026-11-06",5235043.5,2.35],["2026-11-09",4277062.94,2.59],["2026-11-10",1836705.5,2.85],["2026-11-11",6993930.41,3.14]]},{"symbol":"1.600792","name":"云煤能源","limits":[5],"bars":[["2026-11-02",351067,3.78],["2026-11-03",284010,3.74],["2026-11-04",341885,3.81],["2026-11-05",277202,3.85],["2026-11-06",279602,3.82],["2026-11-09",1338145.1,4.2],["2026-11-10",1251217.1,4.3],["2026-11-11",954852.1,4.13]]},{"symbol":"1.601188","name":"龙江交通","limits":[5],"bars":[["2026-11-03",2462342.09,3.7],["2026-11-04",2736202.58,3.55],["2026-11-05",1738849.55,3.46],["2026-11-06",2817064.15,3.81],["2026-11-09",1155480.47,4.19],["2026-11-10",4235376.26,4.61],["2026-11-11",3370768.65,4.29]]},{"symbol":"1.600876","name":"凯盛新能","limits":[5],"bars":[["2026-11-04",85108.4,6.86],["2026-11-05",131108,7.11],["2026-11-06",105817.4,7.06],["2026-11-09",70650,6.93],["2026-11-10",49660,6.92],["2026-11-11",60955,7.61]]},{"symbol":"1.600076","name":"康欣新材","limits":[5],"bars":[["2026-11-04",259136.85,2.01],["2026-11-05",278606,2.04],["2026-11-06",185528,2],["2026-11-09",148548,1.99],["2026-11-10",193535.92,2.03],["2026-11-11",292836,2.23]]},{"symbol":"1.601595","name":"上海电影","limits":[5],"bars":[["2026-11-04",206109.99,31.11],["2026-11-05",220329.75,32.51],["2026-11-06",222009.74,35.76],["2026-11-09",315726.8,38.7],["2026-11-10",259143.83,42.57],["2026-11-11",312432.88,46.83]]},{"symbol":"1.603730","name":"岱美股份","limits":[5],"bars":[["2026-11-04",366029.32,9.16],["2026-11-05",401523.16,9.15],["2026-11-06",247907.75,9],["2026-11-09",348265.8,9.62],["2026-11-10",359893.77,10.17],["2026-11-11",500067.89,11.19]]},{"symbol":"1.603040","name":"新坐标","limits":[5],"bars":[["2026-11-04",48248.5,36.86],["2026-11-05",34180.6,37.9],["2026-11-06",24274.76,36.1],["2026-11-09",78330.4,39.16],["2026-11-10",66441.85,39.97],["2026-11-11",101510.05,43.97]]},{"symbol":"1.603058","name":"永吉股份","limits":[5],"bars":[["2026-11-03",188057,7.6],["2026-11-04",308434,7.9],["2026-11-05",283027.93,8.35],["2026-11-06",179434,7.99],["2026-11-09",188819,7.76],["2026-11-10",409778.97,8.54],["2026-11-11",399209,8.8]]},{"symbol":"1.603228","name":"景旺电子","limits":[5],"bars":[["2026-11-04",528041.91,61.53],["2026-11-05",544552.39,59.25],["2026-11-06",422428.06,53.76],["2026-11-09",590265.38,57.59],["2026-11-10",441966.3,58.6],["2026-11-11",417551.64,64.46]]},{"symbol":"1.603843","name":"*ST正平","limits":[5],"bars":[["2026-11-02",178954.89,4.76],["2026-11-03",97364.28,4.7],["2026-11-04",83555.4,4.7],["2026-11-05",82557.4,4.69],["2026-11-06",132328.48,4.47],["2026-11-09",281306.45,4.92],["2026-11-10",195796.7,5.18],["2026-11-11",178592.84,5.05]]},{"symbol":"1.603135","name":"中重科技","limits":[5],"bars":[["2026-11-04",209150.2,8.12],["2026-11-05",150278.2,8.31],["2026-11-06",100863.8,8.08],["2026-11-09",99464,8.18],["2026-11-10",107182.6,8.41],["2026-11-11",184609.14,9.25]]},{"symbol":"1.603466","name":"风语筑","limits":[5],"bars":[["2026-11-04",841611.41,13.43],["2026-11-05",1012542.36,14.04],["2026-11-06",599296.39,13.63],["2026-11-09",726694.53,13.94],["2026-11-10",854264.41,15.33],["2026-11-11",1247471,16.86]]},{"symbol":"1.603258","name":"电魂网络","limits":[5],"bars":[["2026-11-04",365665.1,16.08],["2026-11-05",400736.58,16.85],["2026-11-06",262714,15.85],["2026-11-09",218551,16],["2026-11-10",285096.12,16.65],["2026-11-11",283258.84,18.32]]},{"symbol":"1.605255","name":"天普股份","limits":[5],"bars":[["2026-11-04",7662.83,47.98],["2026-11-05",7185,49.49],["2026-11-06",5162,47.71],["2026-11-09",10434,50.42],["2026-11-10",14650.01,55.46],["2026-11-11",23100,61.01]]},{"symbol":"1.605488","name":"福莱新材","limits":[5],"bars":[["2026-11-04",428994.75,44.79],["2026-11-05",401925.52,49.27],["2026-11-06",457642.63,48.91],["2026-11-09",393341.81,52.09],["2026-11-10",227481.52,57.3],["2026-11-11",345474.9,63.03]]},{"symbol":"1.603396","name":"金辰股份","limits":[5],"bars":[["2026-11-04",79988.83,25.93],["2026-11-05",150850.79,27.38],["2026-11-06",123599.06,26.73],["2026-11-09",82576.18,26.15],["2026-11-10",70233.76,26.54],["2026-11-11",20288.88,29.19]]},{"symbol":"1.603028","name":"赛福天","limits":[5],"bars":[["2026-11-04",470918.1,7.11],["2026-11-05",371942.94,7.11],["2026-11-06",275602.28,6.78],["2026-11-09",346980.2,7.03],["2026-11-10",291077.1,7.23],["2026-11-11",349965.69,7.95]]},{"symbol":"1.603289","name":"泰瑞机器","limits":[5],"bars":[["2026-11-04",257819.22,9.97],["2026-11-05",192572.61,9.35],["2026-11-06",94276.51,9.05],["2026-11-09",70654.42,9.01],["2026-11-10",96696.5,9.23],["2026-11-11",167555.86,10.15]]},{"symbol":"1.603330","name":"天洋新材","limits":[5],"bars":[["2026-11-04",1096817.43,9.82],["2026-11-05",717834.78,9.56],["2026-11-06",546463.78,8.93],["2026-11-09",513880.67,9.2],["2026-11-10",510038.51,9.57],["2026-11-11",951482.83,10.53]]},{"symbol":"1.688135","name":"利扬芯片","limits":[5],"bars":[["2026-11-04",201411.85,27.73],["2026-11-05",157164.28,27.47],["2026-11-06",165634.2,28.33],["2026-11-09",167583.27,28.03],["2026-11-10",150605.35,29.18],["2026-11-11",300727.26,35.02]]},{"symbol":"1.603706","name":"东方环宇","limits":[5],"bars":[["2026-11-04",18840,17.2],["2026-11-05",12329,17.25],["2026-11-06",70361.93,18.35],["2026-11-09",99587.73,20.19],["2026-11-10",157690.08,22.21],["2026-11-11",168600.37,24.43]]},{"symbol":"1.603703","name":"盛洋科技","limits":[5],"bars":[["2026-11-03",922074.74,11.19],["2026-11-04",802524.21,10.27],["2026-11-05",570875.57,10.11],["2026-11-06",649606.31,10.09],["2026-11-09",438397.5,11.1],["2026-11-10",1210502.37,12.21],["2026-11-11",994562.87,11.87]]},{"symbol":"1.603725","name":"天安新材","limits":[5],"bars":[["2026-11-04",97776.72,10.21],["2026-11-05",111721.31,10.77],["2026-11-06",86312.17,10.69],["2026-11-09",213183.83,11.26],["2026-11-10",129805.8,10.87],["2026-11-11",204624.72,11.96]]},{"symbol":"1.603286","name":"日盈电子","limits":[5],"bars":[["2026-11-03",45258.02,49.87],["2026-11-04",60328,52.24],["2026-11-05",47112,53.86],["2026-11-06",44768,50.33],["2026-11-09",27242,55.36],["2026-11-10",131734.3,60.9],["2026-11-11",117385.5,62.51]]},{"symbol":"1.603313","name":"梦百合","limits":[5],"bars":[["2026-10-29",81016.28,5.67],["2026-10-30",112363.1,5.42],["2026-11-02",151511,5.69],["2026-11-03",72918.1,5.7],["2026-11-04",112745.7,5.84],["2026-11-05",226274.33,6.42],["2026-11-06",190644.72,6.26],["2026-11-09",132888,6.13],["2026-11-10",101427,6.16],["2026-11-11",91748.55,6.16]]},{"symbol":"1.603536","name":"惠发食品","limits":[5,6],"bars":[["2026-11-03",339870.8,10.04],["2026-11-04",256022.24,9.84],["2026-11-05",175658.9,10.06],["2026-11-06",119868,9.75],["2026-11-09",115581,9.79],["2026-11-10",186647.7,10.77],["2026-11-11",94414.11,11.85]]},{"symbol":"1.603366","name":"日出东方","limits":[5],"bars":[["2026-11-04",543217.17,7.9],["2026-11-05",570154.99,8.17],["2026-11-06",562429.8,8.99],["2026-11-09",58970,9.89],["2026-11-10",58001.42,10.88],["2026-11-11",93396,11.97]]},{"symbol":"1.688498","name":"源杰科技","limits":[5],"bars":[["2026-11-04",87470.04,661],["2026-11-05",75252.42,654],["2026-11-06",68188.47,598.9],["2026-11-09",71941.05,645.45],["2026-11-10",65228.32,645.71],["2026-11-11",101275.43,774.85]]},{"symbol":"1.603586","name":"金麒麟","limits":[5],"bars":[["2026-11-04",23552,13.35],["2026-11-05",25205.01,13.75],["2026-11-06",20778,13.46],["2026-11-09",14888,13.33],["2026-11-10",13176,13.6],["2026-11-11",95100,14.96]]},{"symbol":"1.688585","name":"上纬新材","limits":[5],"bars":[["2026-11-02",138247.25,170.72],["2026-11-03",110512.84,155.91],["2026-11-04",145774.96,171.39],["2026-11-05",118510.8,183.04],["2026-11-06",86329.35,180.02],["2026-11-09",157926.68,216.02],["2026-11-10",157587.23,218.86],["2026-11-11",134413.97,240.31]]},{"symbol":"1.603699","name":"纽威股份","limits":[5],"bars":[["2026-10-29",69623.42,37.12],["2026-10-30",67138.2,33.41],["2026-11-02",99270.94,33.03],["2026-11-03",75237.91,34.55],["2026-11-04",63556.73,35.81],["2026-11-05",163694.67,39.39],["2026-11-06",150451.41,40.24],["2026-11-09",76362.39,39.88],["2026-11-10",70814.6,40.28],["2026-11-11",44730,39.83]]},{"symbol":"1.601869","name":"长飞光纤","limits":[5],"bars":[["2026-11-04",166757.58,271.5],["2026-11-05",166548.9,262.85],["2026-11-06",124793.53,240],["2026-11-09",130777.87,254],["2026-11-10",95978.22,252.33],["2026-11-11",138421.5,277.56]]},{"symbol":"1.603042","name":"华脉科技","limits":[5],"bars":[["2026-11-04",193290.39,11.93],["2026-11-05",168712.51,12.1],["2026-11-06",132353.2,11.71],["2026-11-09",117429.63,11.85],["2026-11-10",106109.78,12.16],["2026-11-11",119124.3,13.38]]},{"symbol":"1.603956","name":"威派格","limits":[5],"bars":[["2026-10-29",189065.2,5.89],["2026-10-30",214698.65,5.93],["2026-11-02",175112,6.15],["2026-11-03",172372.1,5.99],["2026-11-04",165143,6.1],["2026-11-05",418850.96,6.71],["2026-11-06",378647.25,6.67],["2026-11-09",325475.18,6.97],["2026-11-10",219088,7.11],["2026-11-11",205014,7.16]]},{"symbol":"1.603083","name":"剑桥科技","limits":[5],"bars":[["2026-11-04",337676.06,121.58],["2026-11-05",292240.09,116.45],["2026-11-06",237712.34,104.81],["2026-11-09",271267.18,103.32],["2026-11-10",257285.74,106.32],["2026-11-11",222423.39,116.95]]},{"symbol":"0.920157","name":"宇特光电","limits":[5],"bars":[["2026-11-04",42113.65,48.58],["2026-11-05",36754.49,45.56],["2026-11-06",28373.19,41.18],["2026-11-09",31418.55,43.63],["2026-11-10",31113.22,44.38],["2026-11-11",72243.15,57.69]]}],"checkedAt":1794398544238}</script>
 <script>
 (() => {
 "use strict";
@@ -1953,7 +2232,7 @@ const quoteNames = {
 const refreshButtons = document.querySelectorAll('[data-market-refresh]');
 const colors = { up: '#f87982', down: '#55d2ae', neutral: '#8499b6', amber: '#edc470', blue: '#87b7fc' };
 const market = { quotes: new Map(), dates: [], pools: new Map(), errors: {}, view: 'overview', hotspot: 'relay' };
-const viewIds = { overview: 'marketOverview', events: 'marketEvents', alerts: 'marketAlerts', hotspots: 'marketHotspots', scanner: 'marketScanner', global: 'marketGlobal', stock: 'stockWorkspace' };
+const viewIds = { overview: 'marketOverview', events: 'marketEvents', alerts: 'marketAlerts', selector: 'marketVolumeSelector', hotspots: 'marketHotspots', scanner: 'marketScanner', global: 'marketGlobal', stock: 'stockWorkspace' };
 const money = value => Number.isFinite(value) ? (value / 1e8).toLocaleString('zh-CN', { maximumFractionDigits: 2 }) + ' 亿' : '—';
 const signed = (value, digits = 2) => Number.isFinite(value) ? (value > 0 ? '+' : '') + value.toFixed(digits) : '—';
 const pct = value => Number.isFinite(value) ? signed(value) + '%' : '—';
@@ -2561,7 +2840,8 @@ function openView(view, symbol) {
     stockLoaded = true;
     return;
   }
-  if (view === 'alerts') renderStockAlerts();
+  if (view === 'selector') loadVolumeSelection();
+  else if (view === 'alerts') renderStockAlerts();
   else if (view === 'scanner') {
     renderScanner();
     readSectorCatalog().catch(error => console.warn('板块目录预加载失败', error));
@@ -2933,26 +3213,6 @@ function trendKey(item) {
   return item.symbol + '/' + item.adjustment;
 }
 
-function buildTrendSnapshot(bars, decimal, date, window = 360) {
-  const closed = bars.filter(bar => bar.date < date).slice(-window);
-  if (closed.length < 60) return null;
-  const reference = closed.at(-1);
-  const fit = analyze(closed, decimal);
-  const entries = [...fit.trends, ...fit.levels, fit.box && {
-    ...fit.box.top, key: 'box-top', name: '箱体上沿', side: 'high'
-  }].filter(Boolean);
-  const lines = [];
-  for (const line of entries) {
-    const prior = Number(lineAt(line, closed.length - 1).toFixed(decimal));
-    const price = Number(lineAt(line, closed.length).toFixed(decimal));
-    if (!(price > 0 && prior > 0)) continue;
-    const same = lines.find(item => item.side === line.side && item.price === price && item.prior === prior);
-    if (same) same.name += ' / ' + line.name;
-    else lines.push({ key: line.key, name: line.name, side: line.side, prior, price });
-  }
-  return { date, referenceDate: reference.date, referenceClose: reference.close, lines, seen: [] };
-}
-
 function refreshBoardTrendWatches(sector, candidates) {
   trendMonitor.board = { code: sector.code, name: sector.name, rows: candidates.map(({ symbol, name, decimal }) =>
     ({ symbol, name, decimal, adjustment: '0' })) };
@@ -3027,11 +3287,7 @@ function observeTrendQuote(watch, snapshot, price, quoteAt, now) {
   const previous = snapshot.previousPrice ?? snapshot.referenceClose;
   if (!snapshot.lastQuoteAt || quoteAt > snapshot.lastQuoteAt || (quoteAt === snapshot.lastQuoteAt && price !== previous)) {
     for (const line of snapshot.lines) {
-      let type;
-      if (line.side === 'high' && previous <= line.price && price > line.price) type = 'up';
-      if (line.side === 'low' && previous >= line.price && price < line.price) type = 'down';
-      if (line.side === 'low' && previous < line.price && price > line.price) type = 'reclaim';
-      if (!type && line.side === 'low' && price >= line.price && price <= line.price * 1.01 + 1e-9) type = 'near';
+      const type = trendSignal(line, previous, price);
       const signal = line.key + '/' + type;
       if (!type || snapshot.seen.includes(signal) || trendMonitor.records.some(item => item.symbol === watch.symbol &&
           item.adjustment === watch.adjustment && item.date === snapshot.date && item.lineKey === line.key && item.type === type)) continue;
@@ -3055,9 +3311,7 @@ function observeTrendQuote(watch, snapshot, price, quoteAt, now) {
 }
 
 function settleTrendRecord(item, close) {
-  item.closeResult = item.type === 'down'
-    ? (close < item.threshold ? '收盘失守' : '收盘已收回')
-    : (close > item.threshold ? '收盘站上' : '收盘未站上');
+  item.closeResult = trendCloseResult(item.type, close, item.threshold);
 }
 
 async function checkTrendAlerts(manual = false) {
@@ -3104,8 +3358,7 @@ async function checkTrendAlerts(manual = false) {
             trendMonitor.snapshots[key] = snapshot;
           }
           if (!snapshot.lines.length) return [];
-          if (Number.isFinite(quote.f18) && quote.f18 > 0 &&
-              Math.abs(snapshot.referenceClose - quote.f18) > Math.max(1.1 * 10 ** -watch.decimal, quote.f18 * 0.001)) {
+          if (!trendBasisMatches(snapshot.referenceClose, quote.f18, watch.decimal)) {
             mismatched++;
             return [];
           }
@@ -3465,6 +3718,350 @@ document.addEventListener('visibilitychange', () => {
     checkScanner();
   }
 });
+const defaultVolumeRules = '1：35天内有涨停\n2：涨停前一天的成交量为基准量，涨停后成交量持续萎缩\n3：今天的成交量小于基准量';
+const maxLookback = 60;
+class VolumeRuleError extends Error {}
+
+function parseVolumeRules(text) {
+  if (typeof text !== 'string' || !text.trim() || text.length > 300) throw new VolumeRuleError('请输入三条量能选股条件，最多 300 字。');
+  const clauses = text.normalize('NFKC').split(/[\n,;。]+/)
+    .map(value => value.trim().replace(/^\d+\s*[:、.．)）]\s*/, '').replace(/\s+/g, '')).filter(Boolean);
+  const rules = { text: text.trim(), minimumShrink: 1 };
+  let shrink = false;
+  for (const clause of clauses) {
+    let match;
+    if ((match = clause.match(/^(?:近|最近|过去)?(\d+)(?:个?交易日|天|日)(?:内)?(?:有|出现|至少一次)涨停$/)) && rules.lookback === undefined) {
+      rules.lookback = Number(match[1]);
+    } else if ((match = clause.match(/^涨停前(一|两|二|\d+)(?:个?交易日|天|日)(?:的)?成交量(?:为|作为|做)基准量$/)) && rules.baselineLag === undefined) {
+      rules.baselineLag = ({ 一: 1, 两: 2, 二: 2 })[match[1]] ?? Number(match[1]);
+    } else if ((match = clause.match(/^涨停后(?:的)?(?:成交量|量能)?(?:持续|逐日|连续)(?:萎缩|缩量|递减)(?:至少(\d+)(?:个?交易日|天|日))?$/)) && !shrink) {
+      shrink = true;
+      if (match[1]) rules.minimumShrink = Number(match[1]);
+    } else if ((match = clause.match(/^(?:今天|当日|今日)(?:的)?成交量(?:小于|低于|<)基准量(?:(?:的)?(\d+(?:\.\d+)?)%)?$/)) && rules.percent === undefined) {
+      rules.percent = Number(match[1] ?? 100);
+    } else {
+      throw new VolumeRuleError('暂不识别「' + clause + '」，请按默认规则的写法修改。');
+    }
+  }
+  if (rules.lookback === undefined || rules.baselineLag === undefined || rules.percent === undefined || !shrink) {
+    throw new VolumeRuleError('请填写涨停范围、基准量、逐日缩量和今日成交量条件。');
+  }
+  if (rules.lookback < 2 || rules.lookback > maxLookback || rules.baselineLag < 1 || rules.baselineLag > 5 ||
+      rules.minimumShrink < 1 || rules.minimumShrink > 10 || !(rules.percent > 0 && rules.percent <= 100)) {
+    throw new VolumeRuleError('涨停范围支持 2–60 个交易日，基准日支持涨停前 1–5 日，连续缩量支持 1–10 日，成交量门槛支持 0% 以上至 100%。');
+  }
+  return rules;
+}
+
+function volumeOptions(snapshot, sessions, rule) {
+  const dates = new Map(sessions.map((date, index) => [date, index]));
+  const earliest = sessions[Math.max(0, sessions.length - rule.lookback)];
+  const last = dates.get(snapshot.date);
+  return snapshot.stocks.flatMap(stock => {
+    if (stock.bars.at(-1)?.[0] !== snapshot.date) return [];
+    const lastVol = stock.bars.at(-1)[1];
+    const options = stock.limits.slice().reverse().flatMap(index => {
+      const [limitDate, limitVol] = stock.bars[index];
+      const baseline = stock.bars[index - rule.baselineLag];
+      const after = stock.bars.slice(index + 1);
+      if (limitDate < earliest || !baseline || !(baseline[1] > 0) ||
+          dates.get(limitDate) - dates.get(baseline[0]) !== rule.baselineLag ||
+          after.length < rule.minimumShrink || last - dates.get(limitDate) !== after.length ||
+          after.some((bar, step) => !(bar[1] > 0 && bar[1] < (step ? after[step - 1][1] : limitVol)))) return [];
+      return [{ limitDate, limitVol, baselineDate: baseline[0], baselineVol: baseline[1],
+        shrinkDays: after.length, lastVol }];
+    });
+    return options.length ? [{ symbol: stock.symbol, name: stock.name, options, lastVol, lastPrice: stock.bars.at(-1)[2] }] : [];
+  });
+}
+
+function pickVolumeMatch(stock, vol, price, rule, live) {
+  if (!(vol > 0 && price > 0) || (live && vol >= stock.lastVol)) return null;
+  const match = stock.options.find(option => vol < option.baselineVol * rule.percent / 100);
+  return match ? { symbol: stock.symbol, name: stock.name, ...match, todayVol: vol, price } : null;
+}
+
+const publicVolumeEvents = new EventTarget();
+let publicVolumeSnapshot;
+let publicVolumeResult = null;
+let publicVolumeProgress = null;
+let publicVolumeError = '';
+let publicVolumeTask = null;
+let publicVolumeQueued = false;
+let publicVolumeCalendar = null;
+let publicVolumeCalendarAt = 0;
+let publicVolumeLast = 0;
+let publicVolumePhase = '';
+const publicVolumeRulesKey = 'market-workbench-public-volume-rules';
+
+let publicVolumeRules = parseVolumeRules(defaultVolumeRules);
+try {
+  const saved = localStorage.getItem(publicVolumeRulesKey);
+  if (saved) publicVolumeRules = parseVolumeRules(saved);
+} catch (error) {
+  console.warn('读取选股规则失败', error);
+}
+
+function retainedVolumeStock(symbol, name, bars, limits, dates, settled) {
+  if (bars.at(-1)?.[0] !== settled) return null;
+  const eligible = limits.filter(index => {
+    const [date, volume] = bars[index];
+    const after = bars.slice(index + 1);
+    return dates.has(date) && volume > 0 && dates.get(settled) - dates.get(date) === after.length &&
+      after.every((row, step) => row[1] > 0 && row[1] < (step ? after[step - 1][1] : volume));
+  });
+  if (!eligible.length) return null;
+  const start = Math.max(0, eligible[0] - 5);
+  return { symbol, name, limits: eligible.map(index => index - start), bars: bars.slice(start) };
+}
+
+async function extendPublicVolumeSnapshot(snapshot, sessions, settled) {
+  const newer = sessions.filter(date => date > snapshot.date && date <= settled);
+  if (!newer.length) return snapshot;
+  if (newer.length > 10) throw new Error('距离公开日线快照超过 10 个交易日，等待新快照');
+  const events = new Map(snapshot.stocks.map(stock => [stock.symbol, {
+    name: stock.name, dates: new Set(stock.limits.map(index => stock.bars[index][0]))
+  }]));
+  for (const date of newer) {
+    const data = await topicPool('up', date);
+    if (!Array.isArray(data.pool) || !data.pool.length || data.pool.length < data.tc) {
+      throw new Error(date + ' 涨停池尚未完整返回');
+    }
+    for (const row of data.pool) {
+      const symbol = row.m + '.' + row.c;
+      if (!/^[01]\.\d{6}$/.test(symbol)) continue;
+      if (!events.has(symbol)) events.set(symbol, { name: row.n || row.c, dates: new Set() });
+      events.get(symbol).dates.add(date);
+    }
+  }
+  const stocks = [];
+  const targets = [...events];
+  const dates = new Map(sessions.map((date, index) => [date, index]));
+  let failed = 0;
+  for (let offset = 0; offset < targets.length; offset += 8) {
+    const group = await Promise.allSettled(targets.slice(offset, offset + 8).map(async ([symbol, event]) => {
+      const history = await publicSinaHistory(symbol, 75);
+      const bars = history.filter(row => /^\d{4}-\d{2}-\d{2}$/.test(row.day) && row.day <= settled)
+        .map(row => [row.day, Number(row.volume) / 100, Number(row.close)]);
+      if (bars.some((row, index) => !Number.isFinite(row[1]) || !Number.isFinite(row[2]) ||
+          (index > 0 && row[0] <= bars[index - 1][0]))) throw new Error('日线价量无效');
+      const limits = bars.flatMap((bar, index) => event.dates.has(bar[0]) ? [index] : []);
+      return retainedVolumeStock(symbol, event.name, bars, limits, dates, settled);
+    }));
+    for (const entry of group) {
+      if (entry.status === 'rejected') failed++;
+      else if (entry.value) stocks.push(entry.value);
+    }
+    publicVolumeProgress = { scanned: Math.min(offset + group.length, targets.length), total: targets.length };
+    publicVolumeEvents.dispatchEvent(new Event('selector'));
+  }
+  if (failed) throw new Error('有 ' + failed + ' 只新增或延续候选的日线未返回');
+  return { ...snapshot, date: settled, stocks };
+}
+
+async function updatePublicVolume() {
+  if (!publicVolumeSnapshot) publicVolumeSnapshot = JSON.parse($('publicVolumeSeed').textContent);
+  const stamp = Date.now();
+  const now = stockClock(stamp);
+  const today = now.slice(0, 10);
+  const clock = now.slice(11, 16);
+  const day = new Date(now).getUTCDay();
+  const during = day > 0 && day < 6 && clock >= '09:30' && clock < '15:05';
+  if (!publicVolumeCalendar || stamp - publicVolumeCalendarAt >= 120000) {
+    const index = await publicTencentHistory('1.000001', 75, false);
+    publicVolumeCalendar = index.rows.filter(row => Number(row[5]) > 0 && row[0] <= today).map(row => row[0]);
+    publicVolumeCalendarAt = stamp;
+  }
+  let sessions = publicVolumeCalendar;
+  let live = during && sessions.at(-1) === today;
+  if (during && !live) {
+    const [quote] = await publicTencentQuotes(['1.000001']);
+    if (quote?.at > 0 && quote.volume > 0 && stockClock(quote.at).slice(0, 10) === today) {
+      sessions = [...sessions, today];
+      live = true;
+    }
+  }
+  if (day > 0 && day < 6 && clock >= '15:05' && sessions.at(-1) !== today) {
+    const [quote] = await publicTencentQuotes(['1.000001']);
+    if (quote?.at > 0 && quote.volume > 0 && stockClock(quote.at).slice(0, 10) === today) {
+      throw new Error('今日收盘日线尚未就绪');
+    }
+  }
+  const date = sessions.at(-1);
+  const settled = live ? sessions.at(-2) : date;
+  if (!settled || settled < publicVolumeSnapshot.date) throw new Error('指数交易日历暂未更新');
+  if (settled > publicVolumeSnapshot.date) {
+    publicVolumeProgress = { scanned: 0, total: null };
+    publicVolumeEvents.dispatchEvent(new Event('selector'));
+    publicVolumeSnapshot = await extendPublicVolumeSnapshot(publicVolumeSnapshot, sessions, settled);
+  }
+  const rules = publicVolumeRules;
+  const candidates = volumeOptions(publicVolumeSnapshot, sessions, rules);
+  const rows = [];
+  let quoteMissing = 0;
+  if (live) {
+    for (let offset = 0; offset < candidates.length; offset += 60) {
+      const group = candidates.slice(offset, offset + 60);
+      const quotes = new Map((await publicTencentQuotes(group.map(row => row.symbol))).map(quote => [quote.symbol, quote]));
+      for (const stock of group) {
+        const quote = quotes.get(stock.symbol);
+        if (!(quote?.at > 0) || stockClock(quote.at).slice(0, 10) !== date || !(quote.volume > 0 && quote.price > 0)) {
+          quoteMissing++;
+          continue;
+        }
+        const row = pickVolumeMatch(stock, quote.volume, quote.price, rules, true);
+        if (row) rows.push({ ...row, quoteAt: quote.at });
+      }
+    }
+  } else {
+    for (const stock of candidates) {
+      const row = pickVolumeMatch(stock, stock.lastVol, stock.lastPrice, rules, false);
+      if (row) rows.push(row);
+    }
+  }
+  if (rules !== publicVolumeRules) return;
+  rows.sort((a, b) => b.limitDate.localeCompare(a.limitDate) || a.todayVol / a.baselineVol - b.todayVol / b.baselineVol);
+  publicVolumeResult = { date, reference: settled, live, checkedAt: Date.now(), total: publicVolumeSnapshot.total,
+    failed: publicVolumeSnapshot.failed, catalogueDate: publicVolumeSnapshot.catalogueDate, quoteMissing, rows };
+}
+
+function publicVolumeRefresh(force = false) {
+  if (publicVolumeTask) {
+    if (force) publicVolumeQueued = true;
+    return;
+  }
+  const stamp = Date.now();
+  const now = stockClock(stamp);
+  const clock = now.slice(11, 16);
+  const today = now.slice(0, 10);
+  const during = stockMarketOpen(now);
+  const phase = today + '/' + (during ? '盘中' : clock >= '15:05' ? '盘后' : clock < '09:30' ? '盘前' : '休息');
+  if (!force && (stamp - publicVolumeLast < 30000 ||
+      (!during && phase === publicVolumePhase && !publicVolumeError && publicVolumeResult))) return;
+  if (phase !== publicVolumePhase) publicVolumeCalendarAt = 0;
+  publicVolumePhase = phase;
+  publicVolumeLast = stamp;
+  publicVolumeError = '';
+  publicVolumeTask = updatePublicVolume().catch(error => {
+    publicVolumeError = error.message;
+    if (!publicVolumeResult && publicVolumeSnapshot) {
+      const rows = volumeOptions(publicVolumeSnapshot, publicVolumeSnapshot.sessions, publicVolumeRules)
+        .map(stock => pickVolumeMatch(stock, stock.lastVol, stock.lastPrice, publicVolumeRules, false)).filter(Boolean);
+      publicVolumeResult = { date: publicVolumeSnapshot.date, reference: publicVolumeSnapshot.date,
+        live: false, checkedAt: publicVolumeSnapshot.checkedAt, total: publicVolumeSnapshot.total,
+        failed: publicVolumeSnapshot.failed, quoteMissing: 0, rows };
+    }
+    console.warn('线上条件选股', error);
+  }).finally(() => {
+    publicVolumeProgress = null;
+    publicVolumeTask = null;
+    if (publicVolumeQueued) {
+      publicVolumeQueued = false;
+      publicVolumeRefresh(true);
+    }
+    publicVolumeEvents.dispatchEvent(new Event('selector'));
+  });
+}
+
+async function publicVolumeRequest(path, options) {
+  if (options?.method === 'POST') {
+    const rules = parseVolumeRules(JSON.parse(options.body).text);
+    localStorage.setItem(publicVolumeRulesKey, rules.text);
+    if (rules.text !== publicVolumeRules.text) {
+      publicVolumeRules = rules;
+      publicVolumeResult = null;
+    }
+    publicVolumeRefresh(true);
+  } else publicVolumeRefresh();
+  return { rules: publicVolumeRules, defaultText: defaultVolumeRules, result: publicVolumeResult,
+    progress: publicVolumeProgress, checking: Boolean(publicVolumeTask), error: publicVolumeError };
+}
+
+let volumeSelectorLoading = false;
+let volumeSelectorReload = false;
+let volumeSavedText = '';
+let volumeDefaultText = '';
+
+function renderVolumeSelection(data) {
+  const { rules, defaultText, result, progress, checking, error } = data;
+  const editor = $('volumeRule');
+  if (editor.value === volumeSavedText || !volumeSavedText) editor.value = rules.text;
+  volumeSavedText = rules.text;
+  volumeDefaultText = defaultText;
+  $('volumeSelectorStatus').textContent = [
+    error ? '更新失败 · ' + error : progress ? '正在读取日线 · ' + (progress.total ? progress.scanned + ' / ' + progress.total : '读取 A 股目录') :
+      checking ? '正在刷新…' : result ? '更新于 ' + dateTime.format(result.checkedAt) : '等待行情',
+    result && '基础日线覆盖 ' + (result.total - result.failed).toLocaleString('zh-CN') + ' 只',
+    result?.catalogueDate && result.catalogueDate < result.reference ? '目录沿用 ' + result.catalogueDate : '',
+    result?.failed ? result.failed + ' 只日线读取失败' : '',
+    result?.quoteMissing ? result.quoteMissing + ' 只缺少当日有效报价' : ''
+  ].filter(Boolean).join(' · ');
+  $('volumeSelectorMode').textContent = result ? (result.live ? '盘中暂符合 · 约 30 秒刷新' : '收盘结果 · 网页打开时更新') : '';
+  $('volumeSelectorSummary').textContent = result ? result.date + ' · ' + result.rows.length + ' 只符合 · 成交量小于基准的 ' + rules.percent + '%' : '';
+  $('volumeSelectorRows').innerHTML = result?.rows.length
+    ? '<div class="scanner-table"><table class="dash-table"><thead><tr><th>股票</th><th>涨停日</th><th>基准量</th><th>涨停日成交量</th><th>连续缩量</th><th>当日成交量</th><th>基准占比</th></tr></thead><tbody>' +
+      result.rows.map(row => '<tr><td>' + stockButton(row.symbol, row.name) + '<small>' + row.symbol.slice(2) +
+        '</small></td><td>' + row.limitDate + '</td><td>' + volume(row.baselineVol) + '<small>' + row.baselineDate +
+        '</small></td><td>' + volume(row.limitVol) + '</td><td>' + row.shrinkDays + ' 日</td><td>' + volume(row.todayVol) +
+        (row.quoteAt ? '<small>' + shortTime.format(row.quoteAt) + '</small>' : '') +
+        '</td><td><strong>' + (row.todayVol / row.baselineVol * 100).toFixed(1) + '%</strong></td></tr>').join('') + '</tbody></table></div>'
+    : result ? '<p class="dash-empty">该交易日暂无同时满足三条条件的股票。</p>' : '';
+}
+
+async function loadVolumeSelection() {
+  if (volumeSelectorLoading) {
+    volumeSelectorReload = true;
+    return;
+  }
+  volumeSelectorLoading = true;
+  try {
+    renderVolumeSelection(await publicVolumeRequest('/api/volume-selector'));
+  } catch (error) {
+    $('volumeSelectorStatus').textContent = '选股数据读取失败 · ' + error.message;
+  } finally {
+    volumeSelectorLoading = false;
+    if (volumeSelectorReload) {
+      volumeSelectorReload = false;
+      loadVolumeSelection();
+    }
+  }
+}
+
+function initVolumeSelection(events) {
+  $('volumeSelectorForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = $('volumeApply');
+    button.disabled = true;
+    $('volumeRuleMessage').textContent = '';
+    try {
+      const data = await publicVolumeRequest('/api/volume-selector', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: $('volumeRule').value })
+      });
+      renderVolumeSelection(data);
+      $('volumeRuleMessage').textContent = '已应用，网页打开时会自动更新。';
+      loadVolumeSelection();
+    } catch (error) {
+      $('volumeRuleMessage').textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  $('volumeReset').addEventListener('click', () => {
+    $('volumeRule').value = volumeDefaultText;
+    $('volumeRuleMessage').textContent = '已填入默认规则，点击「应用并刷新」生效。';
+  });
+  events.addEventListener('selector', () => { if (market.view === 'selector') loadVolumeSelection(); });
+  setInterval(() => { if (market.view === 'selector') loadVolumeSelection(); }, 15000);
+}
+
+initVolumeSelection(publicVolumeEvents);
+const publicQuery = new URLSearchParams(location.search);
+const publicView = publicQuery.get('view');
+const publicSymbol = publicQuery.get('symbol');
+if (publicView === 'stock' && /^[01]\.\d{6}$/.test(publicSymbol)) openView('stock', publicSymbol);
+else if (publicView === 'selector') openView('selector');
+
 renderStockAlerts();
 scanStockAlerts();
 checkTrendAlerts();
