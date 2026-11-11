@@ -1007,10 +1007,18 @@ function applyWindow(preserve = false) {
 }
 
 function renderOhlc() {
-  const bar = state.bars[state.hover ?? state.bars.length - 1];
+  const index = state.hover ?? state.bars.length - 1;
+  const bar = state.bars[index];
+  const previous = state.allBars[state.allBars.length - state.bars.length + index - 1];
+  const diff = previous?.close > 0 ? bar.close - previous.close : null;
+  const tone = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
+  const sign = diff > 0 ? '+' : '';
   $('ohlc').innerHTML = '<time>' + bar.date + '</time>' + [
-    ['开', price(bar.open)], ['高', price(bar.high)], ['低', price(bar.low)], ['收', price(bar.close)], ['量', volume(bar.vol)]
-  ].map(([label, value]) => '<span><b>' + label + '</b>' + value + '</span>').join('');
+    ['开', price(bar.open)], ['高', price(bar.high)], ['低', price(bar.low)], ['收', price(bar.close)],
+    ['涨跌额', diff === null ? '—' : sign + price(diff), tone],
+    ['涨跌幅', diff === null ? '—' : sign + (diff / previous.close * 100).toFixed(2) + '%', tone],
+    ['量', volume(bar.vol)]
+  ].map(([label, value, color = '']) => '<span><b>' + label + '</b><span class="' + color + '">' + value + '</span></span>').join('');
   $('averages').innerHTML = PRICE_AVERAGES.map(({ period, color }, i) => {
     const value = bar.ma[i] === null ? '—' : price(bar.ma[i]);
     return '<span style="color:' + color + '">MA' + period + ' ' + value + '</span>';
