@@ -51,9 +51,10 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 :root{--dash-accent:#7bd9cd;--dash-edge:#27364d;--dash-surface:#111b2a;--dash-sub:#97a9c1}
 .head{display:grid;grid-template-columns:auto 1fr auto;gap:24px;padding-top:14px;padding-bottom:14px}
 .workspace-nav{justify-self:center;display:flex;gap:4px;max-width:100%;overflow:auto;scrollbar-width:thin}
-.workspace-nav button,.dash-subnav button{padding:7px 12px;white-space:nowrap;border:1px solid transparent;border-radius:7px;background:none;color:#a7b7ce;font-size:13px}
+.workspace-nav :is(button,a),.dash-subnav button{padding:7px 12px;white-space:nowrap;border:1px solid transparent;border-radius:7px;background:none;color:#a7b7ce;font-size:13px}
 .workspace-nav button[aria-pressed=true],.dash-subnav button[aria-pressed=true]{background:#1b303c;border-color:#365f66;color:var(--dash-accent)}
-.workspace-nav button:hover,.dash-subnav button:hover,.dash-button:hover{background:#1e3147;color:#ecf5ff}
+.workspace-nav a{text-decoration:none}
+.workspace-nav :is(button,a):hover,.dash-subnav button:hover,.dash-button:hover{background:#1e3147;color:#ecf5ff}
 .dash{padding-top:23px}
 .dash-heading,.dash-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .dash-heading{margin-bottom:17px}
@@ -141,9 +142,9 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .table-scroll{overflow:auto}
 .global-summary{padding:10px 13px;border:1px solid #325269;border-radius:9px;background:#142438;color:#c9dbee;font-size:13px}
 .global-summary strong{margin-right:9px;color:#9bd8f5}
-@media(max-width:910px){.head{gap:13px}.workspace-nav button{padding:7px 8px}.dash-overview{grid-template-columns:1fr 1fr}.sentiment-factors{grid-template-columns:1fr 1fr}}
+@media(max-width:910px){.head{gap:13px}.workspace-nav :is(button,a){padding:7px 8px}.dash-overview{grid-template-columns:1fr 1fr}.sentiment-factors{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.head{grid-template-columns:1fr auto}.workspace-nav{grid-row:2;grid-column:1/-1;justify-self:start}.dash-grid,.dash-overview{grid-template-columns:1fr}.quote-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.relay-grid{grid-template-columns:1fr}}
-@media(max-width:400px){.workspace-nav button,.dash-subnav button{font-size:12px;padding:6px}.dash-card{padding:12px}.dash-heading h2{font-size:23px}.event-row{grid-template-columns:69px minmax(0,1fr) auto;gap:6px}.event-row .event-title{font-size:12px}.breadth-bin>span{font-size:9px}}
+@media(max-width:400px){.workspace-nav :is(button,a),.dash-subnav button{font-size:12px;padding:6px}.dash-card{padding:12px}.dash-heading h2{font-size:23px}.event-row{grid-template-columns:69px minmax(0,1fr) auto;gap:6px}.event-row .event-title{font-size:12px}.breadth-bin>span{font-size:9px}}
 .global-index-stack{display:grid;align-content:start;gap:14px}
 .relay-note{margin:0 0 9px}
 .metric-row + .relay-note{margin-top:12px}
@@ -219,7 +220,7 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 </style>
 </head>
 <body>
-<header><div class="head"><div class="brand"><span class="mark" aria-hidden="true"><i></i></span><h1>市场工作台</h1></div><nav class="workspace-nav" aria-label="工作台页面"><button type="button" data-open-view="overview" aria-pressed="true">市场总览</button><button type="button" data-open-view="events" aria-pressed="false">事件提醒</button><button type="button" data-open-view="alerts" aria-pressed="false">个股预警<span id="alertNavCount" class="alert-nav-count" hidden></span></button><button type="button" data-open-view="hotspots" aria-pressed="false">热点接力</button><button type="button" data-open-view="selector" aria-pressed="false">条件选股</button><button type="button" data-open-view="scanner" aria-pressed="false">板块扫描</button><button type="button" data-open-view="global" aria-pressed="false">全球市场</button><button type="button" data-open-view="stock" aria-pressed="false">个股推演</button></nav><a class="source" href="https://quote.eastmoney.com/" target="_blank" rel="noopener">东方财富行情</a></div></header>
+<header><div class="head"><div class="brand"><span class="mark" aria-hidden="true"><i></i></span><h1>市场工作台</h1></div><nav class="workspace-nav" aria-label="工作台页面"><button type="button" data-open-view="overview" aria-pressed="true">市场总览</button><button type="button" data-open-view="events" aria-pressed="false">事件提醒</button><button type="button" data-open-view="alerts" aria-pressed="false">个股预警<span id="alertNavCount" class="alert-nav-count" hidden></span></button><button type="button" data-open-view="hotspots" aria-pressed="false">热点接力</button><button type="button" data-open-view="selector" aria-pressed="false">条件选股</button><button type="button" data-open-view="scanner" aria-pressed="false">板块扫描</button><button type="button" data-open-view="global" aria-pressed="false">全球市场</button><button type="button" data-open-view="stock" aria-pressed="false">个股推演</button><a href="./replay/">盘口实验室</a></nav><a class="source" href="https://quote.eastmoney.com/" target="_blank" rel="noopener">东方财富行情</a></div></header>
 <main id="marketWorkspace" class="dash">
   <section id="marketOverview" class="dash-view" aria-labelledby="marketTitle">
     <div class="dash-heading">
