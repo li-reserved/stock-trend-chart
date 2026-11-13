@@ -182,6 +182,14 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .stock-decision p+p{margin-top:4px}
 .stock-decision strong{color:#aee5db}
 .stock-decision small{color:#a5bbd5}
+.stock-pattern{--signal:#b6d2f1;padding:10px 13px;margin-bottom:12px;border:1px solid #2b3b50;border-left:3px solid var(--signal);border-radius:8px;background:#121c2a;color:#dce7f5;font-size:12px}
+.stock-pattern[data-tone=risk]{--signal:#ffbd7d}
+.stock-pattern[data-tone=positive]{--signal:#79dbba}
+.stock-pattern-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-bottom:5px}
+.stock-pattern-head h3{font-size:12px;font-weight:650}
+.stock-pattern-head strong{color:var(--signal);font-size:14px}
+.stock-pattern-head small,.stock-pattern p:last-child{color:#a5bbd5}
+.stock-pattern p+p:not(:empty){margin-top:3px}
 .scenario-choices button[data-volume-match]::after{content:" · 量价观察";font-size:10px}
 .scenarios .path[data-volume-match]{border-color:var(--tone)}
 .stock-link-button{padding:7px 9px;flex:none;border:1px solid #3b4e68;border-radius:8px;background:#172438;color:#bde4eb}
@@ -434,6 +442,11 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
   </p>
   <p id="stockLinkStatus" class="stock-link-status" role="status" hidden></p>
   <p id="status" class="status" role="status" hidden></p>
+  <section id="stockPattern" class="stock-pattern" aria-labelledby="stockPatternTitle" hidden>
+    <div class="stock-pattern-head"><h3 id="stockPatternTitle">走势判断</h3><strong id="stockPatternSignal"></strong><small id="stockPatternBasis"></small></div>
+    <p id="stockPatternEvidence"></p>
+    <p id="stockPatternWatch"></p>
+  </section>
   <div class="layout">
     <section id="chartPanel" class="panel chart-panel" aria-label="K 线与四线推演">
       <div class="toolbar">
@@ -1095,6 +1108,18 @@ function renderNotes() {
   const pathLevel = match?.key === 'breakout' ? match.resistance : match?.support;
   const pathReference = pathLevel ? '推演触发位 ' + pathLevel.name + ' ' + price(pathLevel.value) : '';
   $('volumeStatus').textContent = amountLabel;
+  if (!state.historyEnd) {
+    const pattern = judgeStockPattern(state.bars, volumeInfo, anchors, state.trends.concat(state.levels), state.decimal);
+    const panel = $('stockPattern');
+    panel.dataset.tone = pattern.tone;
+    $('stockPatternSignal').textContent = pattern.title;
+    const now = stockClock();
+    const settled = volumeInfo?.kind === 'daily' || latest.date < now.slice(0, 10) || now.slice(11, 16) >= STOCK_CLOSE_CHECK;
+    $('stockPatternBasis').textContent = latest.date + ' · ' + (settled ? '日 K' : '盘中观察 · 待收盘复核') + ' · ' + amountLabel;
+    $('stockPatternEvidence').textContent = pattern.evidence;
+    $('stockPatternWatch').textContent = pattern.watch;
+    panel.hidden = false;
+  }
   $('stockDecision').innerHTML = '<p><strong>量价观察</strong>　' + latest.date + ' · ' + amountLabel +
     (match ? ' · 关注路径「' + match.name + '」' : '') +
     (volumeInfo?.kind === 'intraday' ? ' · 盘中观察，收盘复核' : '') +
@@ -1921,6 +1946,110 @@ async function readStockVolume(symbol, bars, signal) {
   }
   return { kind: 'unavailable', ratio: null };
 }
+
+function judgeStockPattern(bars, volumeInfo, anchors, trends, decimals) {
+  const latest = bars.at(-1);
+  const previous = bars.at(-2);
+  if (bars.length < 21) {
+    return { title: '样本不足', tone: 'neutral', evidence: '需要当前日 K 和前 20 根日 K 才能判断。', watch: '' };
+  }
+
+  const last = bars.length - 1;
+  const fmt = value => value.toFixed(decimals);
+  const buffer = Math.max(10 ** -decimals, latest.atr * 0.15);
+  const [ma5, , ma20] = latest.ma;
+  const ratio = volumeInfo?.ratio;
+  const heavy = Number.isFinite(ratio) && ratio >= VOLUME_RULE.high;
+  const light = Number.isFinite(ratio) && ratio <= VOLUME_RULE.low;
+  const range = latest.high - latest.low;
+  const closePosition = range > 0 ? (latest.close - latest.low) / range : 0.5;
+  const rising = latest.close > previous.close;
+
+  // Keep levels already formed before the latest candle, including levels now crossed by price.
+  const levels = ['high', 'low'].flatMap(side => {
+    const anchor = anchors[side];
+    return anchor ? [{ side, name: side === 'high' ? '近期波段高点' : '近期波段低点', value: anchor.value, prior: anchor.value }] : [];
+  });
+  for (const line of trends) {
+    if (!line || line.end >= last) continue;
+    const value = lineAt(line, last);
+    if (value > 0) levels.push({ side: line.side, name: line.name, value, prior: lineAt(line, last - 1) });
+  }
+  levels.sort((a, b) => Math.abs(a.value - latest.close) - Math.abs(b.value - latest.close));
+  const resistance = levels.find(level => level.side === 'high' && previous.close <= level.prior);
+  const rejected = levels.find(level => level.side === 'high' && previous.close <= level.prior &&
+    latest.high > level.value + buffer && latest.close < level.value - buffer && closePosition <= 0.45);
+  const crossed = levels.find(level => level.side === 'high' && previous.close <= level.prior &&
+    latest.close > level.value + buffer);
+  const broken = levels.find(level => level.side === 'low' && previous.close >= level.prior &&
+    latest.close < level.value - buffer);
+  const support = levels.find(level => level.side === 'low' && Math.abs(latest.low - level.value) <= 2 * buffer &&
+    latest.close >= level.value);
+
+  if (rejected) {
+    const label = rejected.name + ' ' + fmt(rejected.value);
+    return { title: '疑似诱多 · 冲高回落', tone: 'risk',
+      evidence: '最高 ' + fmt(latest.high) + ' 越过' + label + '，随后回落到 ' + fmt(latest.close) + '。' +
+        (heavy ? '放量回落，加重上方抛压迹象。' : ''),
+      watch: '观察后续能否重新站上 ' + fmt(rejected.value) + '。' };
+  }
+
+  // Confirm repeated selling pressure with completed candles and each candle's own prior volume baseline.
+  const recent = bars.slice(-21, -1);
+  const recentHigh = Math.max(...recent.map(bar => bar.high));
+  const recentLow = Math.min(...recent.map(bar => bar.low));
+  const highZone = recentHigh - (recentHigh - recentLow) / 3;
+  const recentSelling = [last - 2, last - 1].some(i => {
+    const bar = bars[i];
+    const baseline = bars[i - 1].volumeMa[0];
+    return baseline > 0 && bar.high >= highZone && bar.vol >= baseline * VOLUME_RULE.high &&
+      bar.close < bars[i - 1].close && bar.close < (bar.high + bar.low) / 2;
+  });
+  if (heavy && latest.high >= highZone && latest.close < previous.close && latest.close < ma5 &&
+      closePosition <= 0.35 && recentSelling) {
+    return { title: '疑似出货 · 高位放量走弱', tone: 'risk',
+      evidence: '近 3 根日 K 至少两次在近 20 日高位区放量走弱，最新价低于 MA5 ' + fmt(ma5) + '。',
+      watch: '观察能否收复 MA5 ' + fmt(ma5) + '，以及 MA20 ' + fmt(ma20) + ' 能否守住。' };
+  }
+  if (broken) {
+    return { title: heavy ? '放量跌破' : '跌破支撑 · 待确认', tone: 'risk',
+      evidence: '最新价 ' + fmt(latest.close) + ' 跌破' + broken.name + ' ' + fmt(broken.value) + '。',
+      watch: '观察后续能否收回 ' + fmt(broken.value) + '。' };
+  }
+  if (crossed) {
+    return { title: heavy && closePosition >= 0.55 ? '放量突破' : '上破压力 · 待确认', tone: 'positive',
+      evidence: '最新价 ' + fmt(latest.close) + ' 越过' + crossed.name + ' ' + fmt(crossed.value) + '。',
+      watch: '观察回踩 ' + fmt(crossed.value) + ' 时能否守住。' };
+  }
+  if (light && support && latest.low < previous.close && closePosition >= 0.5) {
+    return { title: '缩量回踩 · 支撑暂守', tone: 'neutral',
+      evidence: '盘中下探' + support.name + ' ' + fmt(support.value) + ' 附近，随后回到该价位上方。',
+      watch: '观察 ' + fmt(support.value) + ' 能否继续守住。' };
+  }
+  if (light && rising && latest.close < ma20) {
+    return { title: '缩量反弹 · 仍在 MA20 下方', tone: 'neutral',
+      evidence: '最新价高于前收，仍低于 MA20 ' + fmt(ma20) + '。',
+      watch: '观察能否放量站上 MA20。' };
+  }
+  if (latest.close > ma5 && ma5 > ma20 && ma5 > previous.ma[0]) {
+    return { title: '短线偏强', tone: 'positive',
+      evidence: '最新价高于向上的 MA5 ' + fmt(ma5) + '，MA5 高于 MA20 ' + fmt(ma20) + '。',
+      watch: '观察回踩 MA5 时的成交量和支撑。' };
+  }
+  if (latest.close < ma5 && ma5 < ma20 && ma5 < previous.ma[0]) {
+    return { title: '短线偏弱', tone: 'risk',
+      evidence: '最新价低于向下的 MA5 ' + fmt(ma5) + '，MA5 低于 MA20 ' + fmt(ma20) + '。',
+      watch: '观察能否重新站上 MA5 ' + fmt(ma5) + '。' };
+  }
+  const watch = [
+    resistance && resistance.value > latest.close ? '上方' + resistance.name + ' ' + fmt(resistance.value) : '',
+    'MA20 ' + fmt(ma20)
+  ].filter(Boolean).join(' · ');
+  return { title: '观察中 · 暂无明确量价信号', tone: 'neutral',
+    evidence: '最新价 ' + fmt(latest.close) + ' 位于 MA20 ' + fmt(ma20) + (latest.close >= ma20 ? ' 上方或附近。' : ' 下方。'),
+    watch: '关注 ' + watch + '。' };
+}
+
 
 function describeStockVolume(info) {
   if (!info) return '量能待刷新';
