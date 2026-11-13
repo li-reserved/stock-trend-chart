@@ -225,10 +225,12 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .wave-views a[aria-current=page]{color:var(--text);text-decoration:underline;text-underline-offset:3px}
 .wave-mode{justify-content:space-between}
 .wave-mode .meta{margin-left:auto}
-#waveReview .wave-image{display:block;width:100%;height:auto;background:#0d1119}
-#waveReview a{display:block}
-#stockWorkspace[data-wave-review] :is(.security,.stock-link-status,#status,#stockPattern,.layout,.method){display:none}
-#stockWorkspace[data-wave-review] .market-head{justify-content:flex-end}
+.chart-panel{background:#121925}
+.plot{background:#0d1119}
+.wave-legend{display:flex;flex-wrap:wrap;gap:4px 16px;padding:8px 14px;border-top:1px solid #253248;font-size:11px;color:var(--muted)}
+.wave-legend span{display:flex;align-items:center;gap:6px}
+#stockWorkspace[data-wave-chart] :is(#focusView,.scenario-toolbar,#levels,.side,#stockPattern,.method){display:none}
+#stockWorkspace[data-wave-scenarios] #scenarioGuidance{display:none}
 
 .volume-rule-form { display:grid; gap:8px; max-width:700px; }
 .volume-rule-form label { font-weight:650; }
@@ -452,16 +454,11 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
   </nav>
   <div id="waveMode" class="wave-mode" hidden>
     <div role="group" aria-label="个股图表">
-      <button type="button" id="showWaveReview" class="chart-view-button" aria-pressed="false">波浪复盘</button>
-      <button type="button" id="showLiveChart" class="chart-view-button" aria-pressed="true">实时日 K</button>
+      <button type="button" id="showWaveReview" class="chart-view-button" aria-pressed="false">波浪标注</button>
+      <button type="button" id="showLiveChart" class="chart-view-button" aria-pressed="true">自动画线</button>
     </div>
-    <span id="waveReviewDate" class="meta" hidden>截至 2026-11-13 · 点击图表查看原图</span>
+    <span id="waveReviewDate" class="meta" hidden>前复权 · 候选数浪</span>
   </div>
-  <section id="waveReview" class="panel chart-panel" aria-label="波浪复盘图" hidden>
-    <a id="waveReviewLink" target="_blank" rel="noopener">
-      <img id="waveReviewImage" class="wave-image" width="2880" height="1737" alt="">
-    </a>
-  </section>
   <p class="stock-link-status">
     <a href="./windows-stock-link.zip" download>下载 Windows 联动助手</a>
     <span aria-hidden="true"> · </span>
@@ -478,9 +475,9 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
     <section id="chartPanel" class="panel chart-panel" aria-label="K 线与四线推演">
       <div class="toolbar">
         <span class="toolbar-name"><span id="fullscreenStock" class="fullscreen-stock"></span>日 K · 成交量</span>
-        <div class="controls"><label for="windowSize">分析区间</label><select id="windowSize"><option value="180">180 根</option><option value="360" selected>360 根</option><option value="500">500 根</option></select></div>
+        <div class="controls"><label for="windowSize">分析区间</label><select id="windowSize"><option value="180">180 根</option><option value="243">243 根</option><option value="360" selected>360 根</option><option value="500">500 根</option></select></div>
         <div class="controls"><label for="adjust">价格</label><select id="adjust"><option value="0">不复权</option><option value="1">前复权</option></select></div>
-        <div class="controls"><label for="projection">向右延伸</label><select id="projection"><option value="30" selected>30 根</option><option value="60">60 根</option><option value="120">120 根</option></select></div>
+        <div class="controls"><label for="projection">向右延伸</label><select id="projection"><option value="30" selected>30 根</option><option value="39">39 根</option><option value="60">60 根</option><option value="120">120 根</option></select></div>
         <button type="button" id="focusView" class="chart-view-button" aria-label="结构视图" aria-pressed="false" hidden>聚焦结构</button>
         <button type="button" id="alertAddStock" class="dash-button" disabled>设置预警</button>
         <button type="button" id="trendMonitorStock" class="dash-button" aria-pressed="false" disabled>监控图中趋势线</button>
@@ -497,7 +494,19 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
         <p id="empty" class="empty">正在连接行情</p>
       </div>
       <ul id="levels" class="level-list" aria-label="支撑与压力"></ul>
-      <div class="chart-footer"><span id="dateRange">—</span><span>滚轮或捏合缩放 · 按住拖动或双指滑动 · 双击复原</span><span>○ 历史触点　◇ 趋势线交叉　右侧 +N 为第 N 根日 K</span></div>
+      <div id="waveLegend" class="wave-legend" aria-label="波浪图图例" hidden>
+        <span><i class="swatch" style="--line:#62d296"></i>下降通道</span>
+        <span><i class="swatch" style="--line:#ff757b"></i>上升参考线</span>
+        <span><i class="swatch" style="--line:#f3ce57"></i>阶段低点支撑</span>
+        <span><i class="swatch" style="--line:#a7b7cc"></i>前高压力</span>
+        <span><i class="swatch" style="--line:#dac0ff"></i>候选五浪</span>
+        <span><i class="swatch" style="--line:#8fe4ed"></i>调整或反弹浪</span>
+      </div>
+      <div class="chart-footer"><span id="dateRange">—</span><span>滚轮或捏合缩放 · 按住拖动或双指滑动 · 双击复原</span><span>○ 波段高低点　右侧 +N 为第 N 根日 K</span></div>
+    </section>
+    <section id="waveOutlook" class="panel scenarios" aria-labelledby="waveOutlookTitle" hidden>
+      <div class="section-heading"><h2 id="waveOutlookTitle">未来 5–10 个交易日</h2><span>基于 2026-11-13 收盘</span></div>
+      <div id="wavePaths" class="paths"></div>
     </section>
     <section id="scenarioGuidance" class="panel scenarios" aria-label="未来条件路径">
       <div class="section-heading"><h2>走势条件与操作参考</h2><span>价位按最新日 K 计算，路径横轴表示先后顺序</span></div>
@@ -548,12 +557,47 @@ const PRICE_AVERAGES = [
 ];
 const VOLUME_AVERAGES = PRICE_AVERAGES.slice(0, 2);
 const VOLUME_RULE = { high: 1.30, low: 0.80 };
-const WAVE_REVIEWS = { '0.002580': '圣阳股份', '0.002558': '巨人网络' };
+const CHART_INK = {
+  green: '#62d296', red: '#ff757b', gold: '#f3ce57', gray: '#a7b7cc',
+  wave: '#dac0ff', correction: '#8fe4ed', text: '#edf3fb'
+};
+const WAVE_ANNOTATIONS = {
+  '0.002580': {
+    name: '圣阳股份', limits: [8.5, 41],
+    descent: ['09-04', '11-04', '10-23'], rise: ['10-23', '11-04', '07-21'],
+    floor: ['07-21', '10-23'],
+    points: [
+      ['03-18', 'low', '起点', 'wave', -47, 13], ['04-01', 'high', '1 浪', 'wave', -45, -14],
+      ['04-07', 'low', '2 浪', 'wave', -31, 19], ['04-20', 'high', '3 浪', 'wave', -61, -13],
+      ['04-23', 'low', '4 浪', 'wave', -15, 22], ['05-14', 'high', '5 浪', 'wave', 13, -17],
+      ['06-11', 'low', 'A 浪', 'correction', -51, 19], ['06-25', 'high', 'B 浪', 'correction', -16, -14],
+      ['07-21', 'low', 'C 浪', 'correction', -9, 24], ['09-04', 'high', '09/04 高点', 'green', -20, -10],
+      ['10-23', 'low', '10/23 低点', 'gold', -58, 16], ['11-04', 'high', '11/04 高点', 'text', -9, -12]
+    ],
+    outlook: ['上方先看 18.75–19.11，下方留意 16.75。',
+      '收盘站上 19.11 后看 20.54，突破 20.54 后看 21.47。',
+      '收盘跌破 16.75 后留意 15.59 和 14.90，再失守看 13.60。']
+  },
+  '0.002558': {
+    name: '巨人网络', limits: [13.5, 57],
+    descent: ['08-03', '11-11', '10-23'], rise: ['06-12', '07-16', '10-30'],
+    floor: ['10-30', '10-30'],
+    points: [
+      ['01-20', 'high', '起点', 'wave', 6, -10], ['03-09', 'low', '1 浪', 'wave', -62, 18],
+      ['03-11', 'high', '2 浪', 'wave', 8, -14], ['06-12', 'low', '3 浪', 'wave', -69, 20],
+      ['07-16', 'high', '4 浪', 'wave', -40, -14], ['10-30', 'low', '5 浪', 'wave', -72, 18],
+      ['08-03', 'high', '08/03 高点', 'green', -5, -13], ['11-11', 'high', '候选 A 浪', 'correction', -3, -23]
+    ],
+    outlook: ['19.80 是近端低点，18.74 是这次反弹的起点。',
+      '收盘站上 21.60 后看 22.25，突破 22.25 后看 22.94。',
+      '收盘跌破 19.80 后留意 18.74，跌破 18.74 则反弹数浪失效。']
+  }
+};
 const state = {
   symbol: '1.600031', loadedSymbol: '', name: '', decimal: 2, allBars: [],
   bars: [], trends: [], levels: [], crossings: [], paths: [], box: null, scenarioKey: 'retest',
   hover: null, activeCross: null, view: null, chart: null, request: null,
-  structure: null, focusStructure: true, dualPaths: true
+  structure: null, focusStructure: false, dualPaths: true, wave: null, chartMode: 'live'
 };
 const price = value => value.toFixed(state.decimal);
 const volume = value => value >= 10000 ? (value / 10000).toFixed(2) + ' 万手' : value.toLocaleString('zh-CN') + ' 手';
@@ -823,28 +867,64 @@ function analyze(bars, decimals = state.decimal) {
 
 let searchVersion = 0;
 let searchTimer;
-let stockChartMode = 'live';
-
-function showStockChart(symbol, mode) {
-  const name = WAVE_REVIEWS[symbol];
-  const review = Boolean(name && mode === 'wave');
-  stockChartMode = review ? 'wave' : 'live';
-  $('stockWorkspace').toggleAttribute('data-wave-review', review);
-  $('waveMode').hidden = !name;
-  $('waveReview').hidden = !review;
-  $('waveReviewDate').hidden = !review;
-  $('showWaveReview').setAttribute('aria-pressed', review);
-  $('showLiveChart').setAttribute('aria-pressed', !review);
+function renderChartMode() {
+  const symbol = state.loadedSymbol;
+  const wave = state.wave;
+  const datedOutlook = Boolean(wave && state.bars.at(-1).date === '2026-11-13');
+  $('stockWorkspace').toggleAttribute('data-wave-chart', Boolean(wave));
+  $('stockWorkspace').toggleAttribute('data-wave-scenarios', datedOutlook);
+  $('waveMode').hidden = !WAVE_ANNOTATIONS[symbol];
+  $('waveReviewDate').hidden = !wave;
+  $('waveLegend').hidden = !wave;
+  $('showWaveReview').setAttribute('aria-pressed', Boolean(wave));
+  $('showLiveChart').setAttribute('aria-pressed', !wave);
+  $('waveOutlook').hidden = !datedOutlook;
+  if (datedOutlook) {
+    const titles = ['震荡偏弱', '转强条件', '转弱条件'];
+    const colors = [CHART_INK.text, CHART_INK.green, CHART_INK.red];
+    $('wavePaths').innerHTML = WAVE_ANNOTATIONS[symbol].outlook.map((detail, i) =>
+      '<article class="path" style="--tone:' + colors[i] + '"><h3>' + titles[i] +
+      '</h3><p>' + detail + '</p></article>').join('');
+  }
   for (const link of document.querySelectorAll('[data-wave-symbol]')) {
-    if (review && link.dataset.waveSymbol === symbol) link.setAttribute('aria-current', 'page');
+    if (link.dataset.waveSymbol === symbol) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   }
-  if (review) {
-    const src = './wave-reviews/' + symbol.slice(2) + '.png';
-    $('waveReviewLink').href = src;
-    $('waveReviewImage').src = src;
-    $('waveReviewImage').alt = name + '近一年前复权日 K，标注趋势实线、一到五浪和后续走势条件，截至 2026 年 11 月 13 日。点击查看原图。';
-  }
+}
+
+function waveOverlay() {
+  const settings = WAVE_ANNOTATIONS[state.loadedSymbol];
+  if (state.chartMode !== 'wave' || state.loadedAdjustment !== '1' || !settings) return null;
+  const offset = state.allBars.length - state.bars.length;
+  const index = new Map(state.allBars.map((bar, i) => [bar.date, i]));
+  const [highA, highB, lowA] = settings.descent;
+  const [lowB, highC, parallel] = settings.rise;
+  const [floorA, floorB] = settings.floor;
+  const dates = new Set([...settings.descent, ...settings.rise, ...settings.floor, ...settings.points.map(p => p[0])]);
+  if ([...dates].some(day => !index.has('2026-' + day))) return null;
+  const anchor = (day, side) => {
+    const i = index.get('2026-' + day);
+    return { i: i - offset, value: state.allBars[i][side] };
+  };
+  const slope = (a, b) => (b.value - a.value) / (b.i - a.i);
+  const line = ({ i, value }, m, color, start = -Infinity, label = '') =>
+    ({ m, b: value - m * i, color: CHART_INK[color], start, label });
+  const upper = anchor(highA, 'high'), recentHigh = anchor(highB, 'high');
+  const lower = anchor(lowA, 'low'), rebound = anchor(lowB, 'low');
+  const firstLow = anchor(floorA, 'low'), secondLow = anchor(floorB, 'low');
+  const fall = slope(upper, recentHigh), rise = slope(rebound, anchor(highC, 'high'));
+  const floor = floorA === floorB ? 0 : slope(firstLow, secondLow);
+  return {
+    limits: settings.limits,
+    lines: [
+      line(upper, fall, 'green'), line(lower, fall, 'green'),
+      line(rebound, rise, 'red'), line(anchor(parallel, 'low'), rise, 'red'),
+      line(secondLow, floor, 'gold', -Infinity, floor ? '阶段低点连线' : price(secondLow.value) + ' 支撑'),
+      line(recentHigh, 0, 'gray', upper.i, price(recentHigh.value) + ' 压力')
+    ],
+    points: settings.points.map(([day, side, label, color, dx, dy]) =>
+      ({ ...anchor(day, side), label, color: CHART_INK[color], dx, dy }))
+  };
 }
 
 function hideResults() {
@@ -871,8 +951,8 @@ function suggest(query, version) {
   });
 }
 async function findStocks(query, direct, version, exactCodeOnly = false) {
-  const review = Object.entries(WAVE_REVIEWS).find(([symbol, name]) =>
-    query === symbol.slice(2) || query === name);
+  const review = Object.entries(WAVE_ANNOTATIONS).find(([symbol, item]) =>
+    query === symbol.slice(2) || query === item.name);
   if (direct && review) {
     selectStock(review[0], exactCodeOnly ? 'live' : 'wave');
     return true;
@@ -919,15 +999,8 @@ function selectStock(symbol, mode = 'wave') {
   searchVersion++;
   clearTimeout(searchTimer);
   hideResults();
-  showStockChart(symbol, mode);
-  if (stockChartMode === 'wave') {
-    state.symbol = symbol;
-    state.request?.abort();
-    state.request = null;
-    $('query').value = '';
-    return;
-  }
-  loadStock(symbol);
+  const wave = mode === 'wave' && Boolean(WAVE_ANNOTATIONS[symbol]);
+  loadStock(symbol, false, wave ? 'wave' : 'live');
 }
 $('showWaveReview').addEventListener('click', () => selectStock(state.symbol));
 $('showLiveChart').addEventListener('click', () => selectStock(state.symbol, 'live'));
@@ -991,13 +1064,13 @@ async function fetchStockHistory(symbol, adjustment, limit, signal) {
   return { data, bars };
 }
 
-async function loadStock(symbol, automatic = false) {
+async function loadStock(symbol, automatic = false, mode = state.chartMode) {
   const startedAt = Date.now();
   state.symbol = symbol;
   state.request?.abort();
   const request = new AbortController();
   state.request = request;
-  const adjustment = $('adjust').value;
+  const adjustment = mode === 'wave' ? '1' : $('adjust').value;
   if (!automatic) setStatus('正在加载 ' + symbol.slice(2) + ' 的日线…');
   const signal = AbortSignal.any([request.signal, AbortSignal.timeout(11000)]);
   let data, bars;
@@ -1017,7 +1090,6 @@ async function loadStock(symbol, automatic = false) {
     if (state.loadedSymbol) {
       state.symbol = state.loadedSymbol;
       $('adjust').value = state.loadedAdjustment;
-      showStockChart(state.loadedSymbol, 'live');
     }
     setStatus(symbol.slice(2) + ' 加载失败。' + detail + (state.loadedSymbol ? '。图中仍显示 ' + state.name + '。' : '。可重新搜索或刷新页面。'), true);
     if (!state.loadedSymbol) $('empty').textContent = '日线暂不可用';
@@ -1039,6 +1111,12 @@ async function loadStock(symbol, automatic = false) {
   state.loadedAt = Date.now();
   $('stockFreshness').textContent = data.source + '日线 · 自动刷新 · 检查于 ' + stockClock(state.loadedAt).slice(11, 19);
   state.loadedAdjustment = adjustment;
+  $('adjust').value = adjustment;
+  if (!automatic && mode === 'wave') {
+    $('windowSize').value = '243';
+    $('projection').value = '39';
+  }
+  state.chartMode = mode;
   if (!automatic) $('query').value = '';
   $('stockName').textContent = data.name;
   $('fullscreenStock').textContent = data.name + ' · ';
@@ -1070,6 +1148,8 @@ function applyWindow(preserve = false) {
     state.view = null;
   }
   Object.assign(state, analyze(state.bars));
+  state.wave = waveOverlay();
+  renderChartMode();
   state.activeCross = preserve && cross
     ? state.crossings.find(item => item.first.key === cross.first.key && item.second.key === cross.second.key) ?? null
     : null;
@@ -1368,7 +1448,8 @@ function draw() {
   const lastX = last + 0.5;
   const horizon = Math.max(Number($('projection').value), Math.ceil((state.activeCross?.i ?? 0) - last) + 6);
   const fullEnd = last + horizon + 0.5;
-  const focused = Boolean(state.structure && state.focusStructure);
+  const wave = state.wave;
+  const focused = Boolean(!wave && state.structure && state.focusStructure);
   const { start: xStart, end: xEnd } = state.view ?? { start: focused ? state.structure.start : -1, end: fullEnd };
   $('focusView').hidden = !state.structure || state.structure.start <= -1;
   $('focusView').textContent = focused ? '显示全部' : '聚焦结构';
@@ -1377,7 +1458,7 @@ function draw() {
   const x = i => left + (i - xStart) * step;
   const pair = state.structure && state.dualPaths ? dualScenarios() : [];
   const dual = pair.length === 2;
-  const scenarios = dual ? pair : [state.paths.find(path => path.key === state.scenarioKey)];
+  const scenarios = wave ? [] : dual ? pair : [state.paths.find(path => path.key === state.scenarioKey)];
   const projected = scenarios.map(scenario => scenario.points.map((point, index) => ({
     ...point, color: scenario.color,
     i: last + horizon * (dual && scenario.points.length === 2 ? (index ? 0.88 : 0.37) : (index + 1) / (scenario.points.length + 1))
@@ -1391,12 +1472,12 @@ function draw() {
   let min = Math.min(...scaleBars.map(bar => bar.low));
   let max = Math.max(...scaleBars.map(bar => bar.high));
   const spread = Math.max(max - min, Math.abs(scaleBars.at(-1).close) * 0.025, 0.02);
-  const visibleCrosses = state.crossings.filter(cross => cross.i >= xStart && cross.i <= xEnd &&
+  const visibleCrosses = wave ? [] : state.crossings.filter(cross => cross.i >= xStart && cross.i <= xEnd &&
     (cross === state.activeCross || (cross.value >= min - spread * 0.36 && cross.value <= max + spread * 0.36)));
   const rangeMarks = visibleCrosses.map(cross => cross.value);
   rangeMarks.push(...visiblePoints.map(point => point.value));
   for (const bar of visibleBars) rangeMarks.push(...bar.ma.filter(value => value !== null));
-  const lines = state.trends.concat(state.levels).filter(Boolean);
+  const lines = wave?.lines ?? state.trends.concat(state.levels).filter(Boolean);
   for (const line of lines) {
     for (const index of [Math.max(xStart, Math.min(last, xEnd)), xEnd]) {
       if (line.start > index) continue;
@@ -1406,7 +1487,11 @@ function draw() {
   }
   min = Math.min(min, ...rangeMarks) - spread * 0.07;
   max = Math.max(max, ...rangeMarks) + spread * 0.08;
-  const roughTick = (max - min) / 6;
+  if (wave && !state.view) {
+    min = Math.min(min, wave.limits[0]);
+    max = Math.max(max, wave.limits[1]);
+  }
+  const roughTick = (max - min) / (wave ? 8 : 6);
   const power = 10 ** Math.floor(Math.log10(roughTick));
   const tick = [1, 2, 2.5, 5, 10].find(unit => unit * power >= roughTick) * power;
   const y = value => priceBottom - (value - min) / (max - min) * (priceBottom - top);
@@ -1418,7 +1503,9 @@ function draw() {
   const futureLeft = Math.max(left, boundary);
   state.chart = { left, right, top, bottom: volBottom, step, boundary, xStart, xEnd, fullEnd, firstVisible, lastVisible };
 
-  ctx.fillStyle = '#101e30';
+  ctx.fillStyle = '#121925';
+  ctx.fillRect(left, top, right - left, volBottom - top);
+  ctx.fillStyle = '#101622';
   ctx.fillRect(futureLeft, top, Math.max(0, right - futureLeft), volBottom - top);
   ctx.font = labelFont;
   ctx.textAlign = 'left';
@@ -1442,7 +1529,7 @@ function draw() {
   segment(left, priceBottom + 5, right, priceBottom + 5, '#42516a');
   segment(left, volumeY(maxVol / 2), right, volumeY(maxVol / 2), '#223149');
   segment(left, volBottom, right, volBottom, '#304057');
-  if (boundary >= left && boundary <= right) segment(boundary, top, boundary, volBottom, '#7492ba', 1, [4, 4]);
+  if (boundary >= left && boundary <= right) segment(boundary, top, boundary, volBottom, '#53647b', 1, wave ? [] : [4, 4]);
   segment(right, top, right, volBottom, '#304057');
   ctx.fillStyle = '#9cafcb';
   if (visibleBars.length) {
@@ -1494,7 +1581,7 @@ function draw() {
   ctx.clip();
   const bodyWidth = Math.max(1, step * 0.68);
   for (const [offset, bar] of visibleBars.entries()) {
-    const color = bar.close >= bar.open ? '#ff626b' : '#34d8bc';
+    const color = bar.close >= bar.open ? '#ff565b' : '#38c7cb';
     const xp = x(firstVisible + offset);
     const vy = volumeY(bar.vol);
     ctx.fillStyle = color + '95';
@@ -1503,7 +1590,7 @@ function draw() {
     ctx.fillStyle = color;
     ctx.fillRect(xp - bodyWidth / 2, y(Math.max(bar.open, bar.close)), bodyWidth, Math.max(1, Math.abs(y(bar.open) - y(bar.close))));
   }
-  drawAverages(visibleBars, firstVisible, x, volumeY, 'volumeMa', VOLUME_AVERAGES);
+  if (!wave) drawAverages(visibleBars, firstVisible, x, volumeY, 'volumeMa', VOLUME_AVERAGES);
   ctx.restore();
 
   ctx.save();
@@ -1511,7 +1598,7 @@ function draw() {
   ctx.rect(left, top, right - left, priceBottom - top);
   ctx.clip();
   drawAverages(visibleBars, firstVisible, x, y, 'ma', PRICE_AVERAGES);
-  if (state.box) {
+  if (!wave && state.box) {
     const { bottom, top: ceiling, start, end } = state.box;
     ctx.fillStyle = '#81aaff16';
     ctx.strokeStyle = '#8eaddc70';
@@ -1519,18 +1606,20 @@ function draw() {
     ctx.fillRect(x(start), y(ceiling.b), x(end) - x(start), y(bottom.b) - y(ceiling.b));
     ctx.strokeRect(x(start), y(ceiling.b), x(end) - x(start), y(bottom.b) - y(ceiling.b));
   }
-  if (showClose) segment(focused ? left : x(last), closeY, right, closeY,
+  if (!wave && showClose) segment(focused ? left : x(last), closeY, right, closeY,
     focused ? '#45cfb895' : '#6c85a155', 1, focused ? [2, 4] : []);
   const horizontalValues = new Set();
-  for (const level of state.levels.filter(Boolean)) {
+  for (const level of wave ? [] : state.levels.filter(Boolean)) {
     if (level.start > xEnd || horizontalValues.has(level.b)) continue;
     horizontalValues.add(level.b);
     segment(x(level.start), y(level.b), right, y(level.b), level.color + '96');
   }
-  for (const line of state.trends.filter(Boolean)) {
+  for (const line of wave?.lines ?? state.trends.filter(Boolean)) {
     if (line.start > xEnd) continue;
-    segment(x(line.start), y(lineAt(line, line.start)), right, y(lineAt(line, xEnd)), line.color, w > 600 ? 3.1 : 1.8);
-    for (const point of line.touches) {
+    const start = wave || line.key === 'key' ? Math.max(xStart, line.start) : xStart;
+    segment(x(start), y(lineAt(line, start)), right, y(lineAt(line, xEnd)), line.color,
+      line.label?.includes('压力') ? 1.2 : w > 600 ? 2.2 : 1.7);
+    for (const point of line.touches ?? []) {
       if (point.i < xStart || point.i > xEnd) continue;
       ctx.beginPath();
       ctx.arc(x(point.i), y(point.value), state.hover === point.i ? 4.3 : 2.9, 0, Math.PI * 2);
@@ -1602,7 +1691,51 @@ function draw() {
       });
   };
 
-  if (dual && w >= 780 && xEnd > last) {
+  if (wave) {
+    ctx.font = labelFont;
+    ctx.textAlign = 'left';
+    for (const point of wave.points) {
+      if (point.i < xStart || point.i > xEnd) continue;
+      const xp = x(point.i), yp = y(point.value);
+      if (yp < top || yp > priceBottom) continue;
+      ctx.beginPath();
+      ctx.arc(xp, yp, state.hover === point.i ? 4.5 : 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#121925';
+      ctx.fill();
+      ctx.strokeStyle = point.color;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      const text = point.label + '  ' + price(point.value);
+      const width = ctx.measureText(text).width + 8;
+      const candidates = [point.dy, point.dy + Math.sign(point.dy) * 18, -point.dy, -point.dy * 2]
+        .flatMap(dy => [point.dx, -width - 7, 7].map(dx => ({
+          x: Math.max(left, Math.min(right - width, xp + dx)),
+          y: yp + dy - (dy < 0 ? 16 : 0), width, height: 16
+        })));
+      const box = candidates.find(box => box.y >= top && box.y + 16 <= priceBottom && !overlapsLabel(box));
+      if (!box) continue;
+      labelBoxes.push(box);
+      segment(xp, yp, box.x + Math.min(width - 3, Math.max(3, xp - box.x)),
+        box.y < yp ? box.y + 16 : box.y, point.color + 'aa', .8);
+      ctx.fillStyle = '#121925f2';
+      ctx.fillRect(box.x, box.y, width, 16);
+      ctx.fillStyle = point.color;
+      ctx.fillText(text, box.x + 4, box.y + 12);
+    }
+    for (const line of wave.lines.filter(line => line.label)) {
+      const yp = y(lineAt(line, xEnd));
+      if (yp < top + 16 || yp > priceBottom - 12 || line.start > xEnd) continue;
+      const width = ctx.measureText(line.label).width + 8;
+      const box = { x: right - width - 4, y: yp - 16, width, height: 15 };
+      if (overlapsLabel(box)) continue;
+      ctx.fillStyle = '#121925f2';
+      ctx.fillRect(box.x, box.y, width, box.height);
+      ctx.fillStyle = line.color;
+      ctx.fillText(line.label, box.x + 4, box.y + 11);
+    }
+  }
+
+  if (!wave && dual && w >= 780 && xEnd > last) {
     const box = { x: right - 266, y: top + 14, width: 252, height: 60 };
     if (!coversPrice(box)) {
       labelBoxes.push(box);
@@ -1630,7 +1763,7 @@ function draw() {
 
   ctx.font = axisFont;
   ctx.textAlign = 'left';
-  if (state.structure) {
+  if (!wave && state.structure) {
     for (const [index, anchor] of [state.structure.peak, state.structure.low].entries()) {
       if (!anchor || anchor.i < xStart || anchor.i > xEnd) continue;
       const xp = x(anchor.i), yp = y(anchor.value);
@@ -1669,7 +1802,7 @@ function draw() {
   const calloutHeight = w >= 650 ? 27 : 20;
   ctx.font = (w >= 650 ? '650 15px' : '600 11px') + ' "PingFang SC", "Microsoft YaHei", system-ui, sans-serif';
   ctx.textAlign = 'left';
-  for (const [i, line] of state.trends.entries()) {
+  for (const [i, line] of wave ? [] : state.trends.entries()) {
     if (!line) continue;
     const [fraction, preferredSide] = calloutPositions[i];
     const text = line.key === 'key' ? '关键支撑 ' + price(line.b) : w >= 650 ? line.name : line.short;
@@ -1720,7 +1853,7 @@ function draw() {
       text: cross.i > last ? '+' + (cross.i - last).toFixed(1) + ' · ' + price(cross.value) : price(cross.value),
       color: '#e1ebfe', background: '#263a56'
     }));
-  for (const level of state.levels.filter(Boolean)) {
+  for (const level of wave ? [] : state.levels.filter(Boolean)) {
     const historyEnd = level.key === 'box' ? level.end : last;
     annotations.push({
       xp: Math.max(left, x(level.start)) + 6, yp: y(level.b), limit: Math.min(right, x(historyEnd)),
@@ -1749,9 +1882,9 @@ function draw() {
   ctx.font = axisFont;
   ctx.textAlign = 'left';
   if (showClose) {
-    ctx.fillStyle = '#315077';
+    ctx.fillStyle = wave ? '#38c7cb' : '#315077';
     ctx.fillRect(right + 1, closeY - 9, w - right - 2, 18);
-    ctx.fillStyle = '#edf5ff';
+    ctx.fillStyle = wave ? '#0d1119' : '#edf5ff';
     ctx.fillText(price(close), right + 7, closeY + 4);
   }
   if (state.hover !== null && state.hover >= xStart && state.hover <= xEnd) {
@@ -1968,7 +2101,7 @@ document.addEventListener('pointerdown', event => {
   hideResults();
 });
 $('windowSize').addEventListener('change', () => applyWindow());
-$('adjust').addEventListener('change', () => loadStock(state.symbol));
+$('adjust').addEventListener('change', () => loadStock(state.symbol, false, 'live'));
 $('projection').addEventListener('change', () => {
   state.activeCross = null;
   state.view = null;
@@ -3449,7 +3582,7 @@ function renderTrendMonitor() {
   const active = trendMonitor.manual.find(item => item.symbol === state.loadedSymbol);
   const button = $('trendMonitorStock');
   button.disabled = !state.loadedSymbol || Boolean(state.request);
-  button.textContent = active ? '取消手动跨线监控' : '监控图中趋势线';
+  button.textContent = active ? '取消手动跨线监控' : state.wave ? '监控自动趋势线' : '监控图中趋势线';
   button.setAttribute('aria-pressed', Boolean(active));
 
   const watch = watches.find(item => item.symbol === state.loadedSymbol);
@@ -3920,7 +4053,7 @@ function refreshVisibleQuotes() {
     if (!market.globalCheckedAt || (stockMarketOpen() && Date.now() - market.globalCheckedAt >= QUOTE_REFRESH_MS)) {
       refreshMarket({ quotesOnly: true });
     }
-    if (stockChartMode === 'live' && state.loadedSymbol && !state.request && stockRefreshDue(state.checkedAt)) loadStock(state.loadedSymbol, true);
+    if (state.loadedSymbol && !state.request && stockRefreshDue(state.checkedAt)) loadStock(state.loadedSymbol, true);
   }
 }
 setInterval(refreshVisibleQuotes, 15000);
