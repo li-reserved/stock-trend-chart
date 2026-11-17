@@ -5,7 +5,7 @@ const limitReview = (() => {
   const filter = byId('Filter');
   const caseList = byId('Cases');
   const canvas = byId('Chart');
-  const context = canvas.getContext('2d');
+  const dailyReplayCanvas = byId('DailyChart');
   const seek = byId('Seek');
   const speed = byId('Speed');
   const play = byId('Play');
@@ -104,6 +104,8 @@ const limitReview = (() => {
     byId('Metrics').hidden = !daily;
     byId('Event').hidden = !daily;
     byId('Replay').hidden = daily;
+    byId('DailyReplay').hidden = daily;
+    byId('Charts').toggleAttribute('data-replay', !daily);
     canvas.setAttribute('aria-describedby', daily ? 'limitReviewReadout' : 'limitReviewLive');
     renderSelection();
   }
@@ -168,19 +170,25 @@ const limitReview = (() => {
   }
 
   function draw() {
-    const width = canvas.clientWidth, height = canvas.clientHeight;
+    drawChart(canvas, mode);
+    if (mode === 'minutes') drawChart(dailyReplayCanvas, 'dailyReplay');
+  }
+
+  function drawChart(target, chartMode) {
+    const isDaily = chartMode !== 'minutes';
+    const replayDaily = chartMode === 'dailyReplay';
+    const width = target.clientWidth, height = target.clientHeight;
     if (!selected || !width || !height) return;
     const ratio = window.devicePixelRatio;
     const pixelWidth = Math.round(width * ratio), pixelHeight = Math.round(height * ratio);
-    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
-      canvas.width = pixelWidth;
-      canvas.height = pixelHeight;
+    if (target.width !== pixelWidth || target.height !== pixelHeight) {
+      target.width = pixelWidth;
+      target.height = pixelHeight;
     }
-    const ctx = context;
+    const ctx = target.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, width, height);
     ctx.font = '11px system-ui, sans-serif';
-    const isDaily = mode === 'daily';
     const allDays = selected.daily;
     const shownMinutes = selected.minutes.slice(0, minuteStep);
     const day = allDays[eventIndex], previousClose = allDays[eventIndex - 1].close;
@@ -189,12 +197,15 @@ const limitReview = (() => {
     let offset = 0, days = allDays;
     if (isDaily) {
       const density = width >= 600 ? 11 : 9;
-      const visibleCount = Math.min(allDays.length, Math.max(1, Math.floor(chartWidth / density)));
-      if (dayIndex < dailyEnd - visibleCount) dailyEnd = dayIndex + visibleCount;
-      if (dayIndex >= dailyEnd) dailyEnd = dayIndex + 1;
-      dailyEnd = Math.max(visibleCount, dailyEnd);
-      offset = dailyEnd - visibleCount;
-      days = allDays.slice(offset, dailyEnd);
+      const visibleCount = Math.max(1, Math.floor(chartWidth / density));
+      if (!replayDaily) {
+        if (dayIndex < dailyEnd - visibleCount) dailyEnd = dayIndex + visibleCount;
+        if (dayIndex >= dailyEnd) dailyEnd = dayIndex + 1;
+        dailyEnd = Math.min(allDays.length, Math.max(visibleCount, dailyEnd));
+      }
+      const end = replayDaily ? eventIndex + 1 : dailyEnd;
+      offset = Math.max(0, end - visibleCount);
+      days = allDays.slice(offset, end);
     }
     const count = isDaily ? days.length : selected.minutes.length;
     const low = isDaily ? Math.min(...days.map(bar => bar.low)) : Math.min(day.low, Math.round(previousClose * 90) / 100);
@@ -207,7 +218,7 @@ const limitReview = (() => {
     const x = index => left + (index + (isDaily ? 0.5 : 0)) * step;
     const y = price => priceBottom - (price - min) / (max - min) * (priceBottom - top);
     const v = volume => bottom - volume / Math.max(1, peakVolume) * (bottom - volTop);
-    chartBounds = { left, step, count, offset };
+    if (!replayDaily) chartBounds = { left, step, count, offset };
     function line(x1, y1, x2, y2, color) {
       ctx.strokeStyle = color;
       ctx.beginPath();
@@ -221,10 +232,12 @@ const limitReview = (() => {
       ctx.fillText(text, xPos, yPos);
     }
 
-    label(isDaily ? '日 K · 不复权' : '分时 · 分钟末价', left, 16);
+    label(replayDaily ? '日 K · 回放至 ' + minuteLabel(minuteStep)
+      : isDaily ? '日 K · 不复权' : '分时 · 分钟末价', left, 16);
     label('元', right + 7, 16);
     const volumeInLots = peakVolume < 10000;
-    label(volumeInLots ? '成交量（手）' : '成交量（万手）', left, volTop - 7);
+    const volumeLabel = replayDaily ? '日成交量' : '成交量';
+    label(volumeLabel + (volumeInLots ? '（手）' : '（万手）'), left, volTop - 7);
     const prices = isDaily
       ? Array.from({ length: 5 }, (_, i) => low + (high - low) * i / 4)
       : [low, (low + previousClose) / 2, previousClose, (previousClose + high) / 2, high];
@@ -236,6 +249,18 @@ const limitReview = (() => {
     label(volumeInLots ? String(peakVolume) : (peakVolume / 10000).toFixed(2), right + 5, volTop + 4);
 
     if (isDaily) {
+      if (replayDaily) {
+        // Keep the axes fixed while the current candle and volume bar grow.
+        const prices = [day.open, ...shownMinutes.map(([price]) => price / 100)];
+        const current = minuteStep === selected.minutes.length ? day : {
+          ...day,
+          high: Math.max(...prices),
+          low: Math.min(...prices),
+          close: prices.at(-1),
+          change: prices.at(-1) - previousClose
+        };
+        days[days.length - 1] = { ...current, volume: cumulativeVolume[minuteStep] };
+      }
       const event = eventIndex - offset;
       if (event >= 0 && event < count) {
         ctx.fillStyle = '#7bd9cd23';
@@ -252,7 +277,8 @@ const limitReview = (() => {
         ctx.fillRect(x(i) - w / 2, v(bar.volume), w, bottom - v(bar.volume));
         if (i === first || i === event) {
           const eventBar = i === event;
-          label(eventBar ? selected.streak + '板' : '首板', x(i), y(bar.high) - 7, eventBar ? ink.accent : ink.up, 'center');
+          const tag = eventBar ? (replayDaily ? '换手日' : selected.streak + '板') : '首板';
+          label(tag, x(i), y(bar.high) - 7, eventBar ? ink.accent : ink.up, 'center');
         }
       }
       const spacing = Math.ceil(52 / step);
@@ -287,8 +313,8 @@ const limitReview = (() => {
       for (const [position, text, align] of ticks) label(text, x(position), height - 6, ink.text, align);
     }
 
-    const cursor = isDaily ? dayIndex - offset : minuteStep;
-    const selectedPrice = isDaily ? allDays[dayIndex].close : minuteStep ? shownMinutes.at(-1)[0] / 100 : day.open;
+    const cursor = isDaily ? (replayDaily ? count - 1 : dayIndex - offset) : minuteStep;
+    const selectedPrice = isDaily ? days[cursor].close : minuteStep ? shownMinutes.at(-1)[0] / 100 : day.open;
     ctx.setLineDash([3, 3]);
     line(x(cursor), top - 5, x(cursor), bottom, '#a1b0c5b5');
     ctx.setLineDash([]);

@@ -24,6 +24,10 @@
 .limit-review-live { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 10px; margin: 0 0 9px; padding: 7px 10px; border: 1px solid var(--dash-edge); border-radius: 7px; }
 .limit-review-live dt { color: var(--dash-sub); font-size: 11px; }
 .limit-review-live dd { margin: 0; font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.limit-review-charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+@media (min-width: 1180px) {
+  .limit-review-charts[data-replay] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .limit-review-plot { height: clamp(280px, 37vh, 380px); border: 1px solid var(--dash-edge); border-radius: 8px; background: #0b121e; }
 .limit-review-plot canvas { display: block; width: 100%; height: 100%; border-radius: 8px; cursor: crosshair; touch-action: pan-y; }
 .limit-review-readout { margin-top: 8px; min-height: 36px; color: #c7d7ee; font-size: 12px; font-variant-numeric: tabular-nums; }
