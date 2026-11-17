@@ -16,7 +16,7 @@ const limitReview = (() => {
   const percent = value => value.toFixed(2) + '%';
   let archive, loading, selected;
   let mode = 'daily', eventIndex = 0, dayIndex = 0, dailyEnd = 0, minuteStep = 0;
-  let chartBounds, cumulativeVolume, playbackTimer;
+  let chartBounds, cumulativeVolume, playbackTimer, previewDayIndex = null;
   let replayIndex = 0, replayMinutes = [], replayRequest = 0;
 
   function locateCase(item) {
@@ -146,6 +146,7 @@ const limitReview = (() => {
 
   function setMode(value) {
     mode = value;
+    previewDayIndex = null;
     const daily = mode === 'daily';
     if (daily) stopPlayback();
     byId('Daily').setAttribute('aria-pressed', daily);
@@ -194,7 +195,7 @@ const limitReview = (() => {
       const b = selected.daily[dayIndex];
       const tag = dayIndex === eventIndex ? ' · 换手日' : dayIndex === eventIndex - 1 ? ' · 前一日一字板' : '';
       const change = (b.change > 0 ? '+' : '') + percent(b.change);
-      byId('Readout').textContent = b.date + tag + '　开 ' + money(b.open) + '　高 ' + money(b.high) +
+      byId('Readout').textContent = '已选 ' + b.date + tag + '　开 ' + money(b.open) + '　高 ' + money(b.high) +
         '　低 ' + money(b.low) + '　收 ' + money(b.close) + '（' + change + '）　量 ' + lots(b.volume) + '　换手 ' + percent(b.turnover);
       byId('Prev').disabled = dayIndex === 0;
       byId('Next').disabled = dayIndex === selected.daily.length - 1;
@@ -373,8 +374,14 @@ const limitReview = (() => {
 
     const cursor = isDaily ? (replayDaily ? count - 1 : dayIndex - offset) : minuteStep;
     const selectedPrice = isDaily ? days[cursor].close : minuteStep ? shownMinutes.at(-1)[0] / 100 : day.open;
-    ctx.setLineDash([3, 3]);
-    line(x(cursor), top - 5, x(cursor), bottom, '#a1b0c5b5');
+    const selectable = isDaily && !replayDaily;
+    const preview = previewDayIndex === null ? -1 : previewDayIndex - offset;
+    if (selectable && preview >= 0 && preview < count && preview !== cursor) {
+      ctx.setLineDash([3, 3]);
+      line(x(preview), top - 5, x(preview), bottom, '#a1b0c575');
+    }
+    ctx.setLineDash(selectable ? [] : [3, 3]);
+    line(x(cursor), top - 5, x(cursor), bottom, selectable ? '#7bd9cdb5' : '#a1b0c5b5');
     ctx.setLineDash([]);
     ctx.fillStyle = ink.accent;
     ctx.beginPath();
@@ -384,16 +391,29 @@ const limitReview = (() => {
 
   function selectDay(index) {
     dayIndex = Math.max(0, Math.min(selected.daily.length - 1, index));
+    previewDayIndex = null;
+    replayRequest++;
+    byId('ReplayStatus').hidden = true;
     renderSelection();
   }
 
-  function locatePointer(event) {
+  function previewDay(index) {
+    if (previewDayIndex === index) return;
+    previewDayIndex = index;
+    draw();
+  }
+
+  function locatePointer(event, preview = false) {
     const { left, step, count, offset } = chartBounds;
     const position = (event.offsetX - left) / step;
-    if (position < 0 || position > count) return;
+    if (position < 0 || position > count) {
+      if (preview) previewDay(null);
+      return;
+    }
     if (mode === 'daily') {
       const index = offset + Math.min(count - 1, Math.floor(position));
-      if (index !== dayIndex) selectDay(index);
+      if (preview) previewDay(index);
+      else selectDay(index);
     } else {
       seekTo(Math.round(position));
     }
@@ -431,9 +451,10 @@ const limitReview = (() => {
     }
   });
   canvas.addEventListener('pointermove', event => {
-    if (mode === 'daily' && event.pointerType !== 'touch') locatePointer(event);
+    if (mode === 'daily' && event.pointerType !== 'touch') locatePointer(event, true);
   });
-  canvas.addEventListener('click', locatePointer);
+  canvas.addEventListener('pointerleave', () => previewDay(null));
+  canvas.addEventListener('click', event => locatePointer(event));
   canvas.addEventListener('keydown', event => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     event.preventDefault();
