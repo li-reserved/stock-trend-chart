@@ -1,3 +1,12 @@
+.limit-market { margin-bottom: 18px; }
+.limit-market .dash-card-head h3 { margin-bottom: 3px; }
+.limit-market-signal { margin-bottom: 6px; color: var(--dash-accent); font-size: 12px; }
+.limit-market-signal:empty { display: none; }
+#limitMarketRows { max-height: 220px; overflow-y: auto; }
+.limit-market table tr[data-match] { background: #1b303c; }
+.limit-market table td:nth-child(2) { min-width: 72px; }
+.limit-market table td:last-child { text-align: right; }
+#limitReviewReplayStatus { margin-bottom: 7px; }
 #limitReviewStatus { margin: -5px 0 14px; }
 .limit-review-layout { display: grid; grid-template-columns: minmax(215px, 260px) minmax(0, 1fr); gap: 14px; align-items: start; }
 .limit-review-list input { display: block; width: 100%; background: var(--bg); color: var(--text); border: 1px solid #3b4e68; border-radius: 7px; padding: 8px 10px; margin-bottom: 10px; }
