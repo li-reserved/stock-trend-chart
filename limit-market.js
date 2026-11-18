@@ -33,7 +33,24 @@ const limitMarket = (() => {
     });
   }
 
-  async function intraday(symbol, date) {
+  async function stockDays(symbol) {
+    try {
+      return { daily: await days(symbol, '0', '20500101', 500), source: '东方财富' };
+    } catch (error) {
+      const ticker = (symbol.startsWith('1.') ? 'sh' : /^(4|8|92)/.test(symbol.slice(2)) ? 'bj' : 'sz') + symbol.slice(2);
+      const result = await data('https://web.ifzq.gtimg.cn/appstock/app/fqkline/get', { param: ticker + ',day,,,500,' });
+      const rows = result[ticker]?.day;
+      if (!rows?.length) throw new Error('日线读取失败 · ' + error.message);
+      const daily = rows.map(([date, open, close, high, low, volume], index) => ({
+        date, open: +open, close: +close, high: +high, low: +low, volume: +volume,
+        amount: null, turnover: null,
+        change: index ? (+close / +rows[index - 1][2] - 1) * 100 : 0
+      }));
+      return { daily, source: '腾讯日线 · 当前数据源缺少成交额和换手率', warning: true };
+    }
+  }
+
+  async function eastmoneyMinutes(symbol, date) {
     const result = await data(origin + 'stock/trends2/get', {
       secid: symbol, iscr: 0, ndays: 5,
       fields1: 'f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13', fields2: 'f51,f52,f53,f54,f55,f56,f57,f58'
@@ -56,6 +73,33 @@ const limitMarket = (() => {
     }
     if (!minutes.length) throw new Error(date + ' 暂无可回放的分钟行情');
     return minutes;
+  }
+
+  async function intraday(symbol, date) {
+    try {
+      return await eastmoneyMinutes(symbol, date);
+    } catch (error) {
+      const ticker = (symbol.startsWith('1.') ? 'sh' : /^(4|8|92)/.test(symbol.slice(2)) ? 'bj' : 'sz') + symbol.slice(2);
+      const result = await data('https://web.ifzq.gtimg.cn/appstock/app/day/query', { code: ticker, iscs: 1 });
+      const session = result[ticker]?.data?.find(item => isoDate(item.date) === date);
+      if (!session) throw new Error(date + ' 超出公开接口的近期分钟范围，且没有分时归档');
+      const minutes = [];
+      let previousVolume = 0;
+      for (const line of session.data) {
+        const [time, price, cumulative] = line.split(' ');
+        if (!((time >= '0931' && time <= '1130') || (time >= '1301' && time <= '1500'))) continue;
+        const h = +time.slice(0, 2), m = +time.slice(2);
+        const step = h * 60 + m - (h < 13 ? 570 : 660);
+        const volume = Number(cumulative) - previousVolume;
+        if (step !== minutes.length + 1 || !Number.isFinite(+price) || !Number.isFinite(volume) || volume < 0) {
+          throw new Error(date + ' 分时数据不完整');
+        }
+        minutes.push([Math.round(Number(price) * 100), volume]);
+        previousVolume = Number(cumulative);
+      }
+      if (!minutes.length) throw new Error(date + ' 没有可回放的分时');
+      return minutes;
+    }
   }
 
   async function calendar() {
@@ -266,5 +310,5 @@ const limitMarket = (() => {
     cancelCase();
   }
 
-  return { open, leave, cancelCase, intraday };
+  return { open, leave, cancelCase, intraday, days, stockDays };
 })();

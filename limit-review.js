@@ -13,26 +13,35 @@ const limitReview = (() => {
   const ink = { text: '#a1b0c5', grid: '#28374d', accent: '#7bd9cd', up: '#ff747b', down: '#49d9ae', neutral: '#8ea4c0' };
   const money = value => value.toFixed(2);
   const lots = value => value >= 10000 ? (value / 10000).toFixed(2) + ' 万手' : value.toLocaleString('zh-CN') + ' 手';
-  const percent = value => value.toFixed(2) + '%';
+  const percent = value => Number.isFinite(value) ? value.toFixed(2) + '%' : '—';
   let archive, loading, selected;
   let mode = 'daily', eventIndex = 0, dayIndex = 0, dailyEnd = 0, minuteStep = 0;
   let chartBounds, cumulativeVolume, playbackTimer, previewDayIndex = null;
-  let replayIndex = 0, replayMinutes = [], replayRequest = 0;
+  let replayIndex = 0, replayMinutes = [], replayRequest = 0, stockRequest = 0;
 
   function locateCase(item) {
     const address = new URL(location.href);
     address.searchParams.set('view', 'limit-review');
     address.searchParams.set('symbol', item.symbol);
     address.searchParams.set('date', item.date);
+    if (item.generic) {
+      address.searchParams.set('replay', 'stock');
+      address.searchParams.set('name', item.name);
+    }
+    else {
+      address.searchParams.delete('replay');
+      address.searchParams.delete('name');
+    }
     history.replaceState(history.state, '', address);
   }
 
   function leave() {
     stopPlayback();
+    stockRequest++;
     replayRequest++;
     limitMarket.leave();
     const address = new URL(location.href);
-    for (const key of ['view', 'symbol', 'date']) address.searchParams.delete(key);
+    for (const key of ['view', 'symbol', 'date', 'replay', 'name']) address.searchParams.delete(key);
     history.replaceState(history.state, '', address);
   }
 
@@ -64,6 +73,7 @@ const limitReview = (() => {
         caseList.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', false);
         button.setAttribute('aria-pressed', true);
         limitMarket.cancelCase();
+        stockRequest++;
         showCase(item);
         if (matchMedia('(max-width: 760px)').matches) byId('Name').scrollIntoView({ block: 'start' });
       };
@@ -72,23 +82,25 @@ const limitReview = (() => {
   }
 
   function showCase(item) {
+    byId('BackStock').hidden = !item.generic;
     selected = item;
     eventIndex = item.daily.findIndex(day => day.date === item.date);
     dayIndex = eventIndex;
     dailyEnd = item.daily.length;
     replayRequest++;
     byId('ReplayStatus').hidden = true;
-    replayDate.replaceChildren(...item.daily.slice(eventIndex).map(day => new Option(day.date, day.date)));
-    loadReplay(eventIndex, item.minutes);
+    replayDate.replaceChildren(...item.daily.slice(item.generic ? 1 : eventIndex).map(day => new Option(day.date, day.date)));
+    loadReplay(eventIndex, item.minutes || []);
     const day = item.daily[eventIndex];
     const previous = item.daily[eventIndex - 1];
-    const average = day.amount / (day.volume * 100);
+    const average = Number.isFinite(day.amount) ? day.amount / (day.volume * 100) : NaN;
     byId('Name').textContent = item.name + ' · ' + item.symbol.slice(2);
-    byId('Date').textContent = item.date + ' · ' + (item.live ? '连板梯队 · ' + item.streak + ' 板' : item.streak + ' 连板');
+    byId('EventDay').textContent = item.generic ? '初选日' : '换手日';
+    byId('Date').textContent = item.date + ' · ' + (item.generic ? '个股回溯' : item.live ? '连板梯队 · ' + item.streak + ' 板' : item.streak + ' 连板');
     const ticker = (item.symbol.startsWith('1.') ? 'sh' : 'sz') + item.symbol.slice(2);
     byId('Source').href = item.source || 'https://quote.eastmoney.com/' + ticker + '.html';
     const opening = item.firstSeal ? item.firstSeal + ' 首封' : '涨停开盘';
-    byId('Event').textContent = item.live ? '最近交易日量价与分时回放'
+    byId('Event').textContent = item.generic ? '点击日 K 锁定日期，再打开所选日分时。未归档日期取公开接口近 5 个交易日，超出范围会提示缺少数据。' : item.live ? '最近交易日量价与分时回放'
       : previous.date + ' 一字板 → ' + opening + ' → 开板换手 → 收盘封板';
     const metrics = [
       ['前一日 → 当日换手率', percent(previous.turnover) + ' → ' + percent(day.turnover)],
@@ -100,7 +112,11 @@ const limitReview = (() => {
     setMode('daily');
   }
 
-  const upperLimit = previous => Math.floor((Math.round(previous * 100) * 110 + 50) / 100) / 100;
+  const upperLimit = previous => {
+    const code = selected.symbol.slice(2);
+    const rate = /ST/.test(selected.name) ? 5 : /^(30|68)/.test(code) ? 20 : /^(4|8|92)/.test(code) ? 30 : 10;
+    return Math.floor((Math.round(previous * 100) * (100 + rate) + 50) / 100) / 100;
+  };
 
   function loadReplay(index, rows) {
     replayIndex = index;
@@ -118,20 +134,21 @@ const limitReview = (() => {
     const status = byId('ReplayStatus');
     const request = ++replayRequest;
     stopPlayback();
-    if (index === replayIndex) {
+    if (index === replayIndex && replayMinutes.length) {
       status.hidden = true;
       dayIndex = index;
       setMode('minutes');
       return;
     }
-    const archived = index === eventIndex ? item.minutes : item.replays?.[day.date];
     try {
+      const archived = (index === eventIndex && item.minutes?.length ? item.minutes : item.replays?.[day.date]) || await archivedMinutes(item.symbol, day.date);
       if (!archived) {
         status.hidden = false;
         status.textContent = '正在读取 ' + day.date + ' 分时…';
       }
       const minutes = archived || await limitMarket.intraday(item.symbol, day.date);
       if (request !== replayRequest) return;
+      (item.replays ||= {})[day.date] = minutes;
       loadReplay(index, minutes);
       dayIndex = index;
       status.hidden = true;
@@ -141,6 +158,48 @@ const limitReview = (() => {
       status.hidden = false;
       status.textContent = error.message;
       replayDate.value = item.daily[replayIndex].date;
+    }
+  }
+
+  async function archivedMinutes(symbol, date) {
+    if (!archive) return undefined;
+    for (const item of archive.cases) {
+      if (item.symbol !== symbol) continue;
+      if (item.date === date) return item.minutes;
+      if (item.replays?.[date]) return item.replays[date];
+    }
+  }
+
+  async function openStock(target) {
+    const request = ++stockRequest;
+    stopPlayback();
+    limitMarket.cancelCase();
+    byId('Status').textContent = '正在读取 ' + target.name + ' 不复权历史日线…';
+    try {
+      const { daily, source } = await limitMarket.stockDays(target.symbol);
+      if (request !== stockRequest) return;
+      const index = daily.findIndex(day => day.date === target.date);
+      if (index < 1) throw new Error('所选交易日缺少日线或前一日成交量');
+      const item = {
+        symbol: target.symbol, name: target.name, date: target.date, generic: true,
+        daily, minutes: await archivedMinutes(target.symbol, target.date)
+      };
+      if (request !== stockRequest) return;
+      showCase(item);
+      renderCases();
+      byId('Status').textContent = '个股回溯 · 不复权 · ' + source + ' · 点击日 K 锁定回放日期';
+      byId('BackStock').hidden = false;
+      byId('BackStock').href = '?view=stock&symbol=' + encodeURIComponent(item.symbol);
+    } catch (error) {
+      if (request !== stockRequest) return;
+      const status = byId('Status');
+      status.textContent = '个股回溯读取失败 · ' + (error instanceof TypeError ? '行情接口暂不可连接' : error.message) + ' ';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'dash-text-button';
+      retry.textContent = '重试';
+      retry.onclick = () => openStock(target);
+      status.append(retry);
     }
   }
 
@@ -193,14 +252,14 @@ const limitReview = (() => {
   function renderSelection() {
     if (mode === 'daily') {
       const b = selected.daily[dayIndex];
-      const tag = dayIndex === eventIndex ? ' · 换手日' : dayIndex === eventIndex - 1 ? ' · 前一日一字板' : '';
+      const tag = selected.generic ? '' : dayIndex === eventIndex ? ' · 换手日' : dayIndex === eventIndex - 1 ? ' · 前一日一字板' : '';
       const change = (b.change > 0 ? '+' : '') + percent(b.change);
       byId('Readout').textContent = '已选 ' + b.date + tag + '　开 ' + money(b.open) + '　高 ' + money(b.high) +
         '　低 ' + money(b.low) + '　收 ' + money(b.close) + '（' + change + '）　量 ' + lots(b.volume) + '　换手 ' + percent(b.turnover);
       byId('Prev').disabled = dayIndex === 0;
       byId('Next').disabled = dayIndex === selected.daily.length - 1;
       byId('EventDay').disabled = dayIndex === eventIndex;
-      byId('Minutes').disabled = dayIndex < eventIndex;
+      byId('Minutes').disabled = dayIndex < (selected.generic ? 1 : eventIndex);
     } else {
       const day = selected.daily[replayIndex];
       const previous = selected.daily[replayIndex - 1];
@@ -217,7 +276,7 @@ const limitReview = (() => {
       priceOutput.textContent = money(price / 100) + ' 元 / ' + (change > 0 ? '+' : '') + percent(change);
       byId('MinuteVolume').textContent = minuteStep ? lots(volume) : '—';
       byId('TotalVolume').textContent = minuteStep ? lots(total) : '—';
-      byId('Turnover').textContent = minuteStep ? percent(total / day.volume * day.turnover) : '—';
+      byId('Turnover').textContent = minuteStep ? percent(Number.isFinite(day.turnover) ? total / day.volume * day.turnover : NaN) : '—';
     }
     draw();
   }
@@ -330,8 +389,8 @@ const limitReview = (() => {
         ctx.fillStyle = color;
         ctx.fillRect(x(i) - w / 2, y(Math.max(bar.open, bar.close)), w, Math.max(2, Math.abs(y(bar.open) - y(bar.close))));
         ctx.fillRect(x(i) - w / 2, v(bar.volume), w, bottom - v(bar.volume));
-        if (i === highlighted || (!selected.live && i === first)) {
-          const tag = i === highlighted ? (replayDaily ? '回放日' : selected.streak + '板') : '首板';
+        if (i === highlighted || (!selected.live && !selected.generic && i === first)) {
+          const tag = i === highlighted ? (replayDaily ? '回放日' : selected.generic ? '已选' : selected.streak + '板') : '首板';
           label(tag, x(i), y(bar.high) - 7, i === highlighted ? ink.accent : ink.up, 'center');
         }
       }
@@ -464,7 +523,7 @@ const limitReview = (() => {
   });
   new ResizeObserver(draw).observe(canvas);
 
-  async function open() {
+  async function open(target) {
     if (!archive) {
       byId('Status').textContent = '正在读取行情归档…';
       loading ??= fetch('./limit-review-data.json?v=4').then(response => {
@@ -484,6 +543,14 @@ const limitReview = (() => {
     byId('Status').textContent = '已收录 ' + archive.cases.length + ' 个历史案例 · ' + archive.checkedDate + ' 收盘筛查无符合项';
     byId('Layout').hidden = false;
     const params = new URLSearchParams(location.search);
+    if (target) {
+      openStock(target);
+      return;
+    }
+    if (params.get('replay') === 'stock') {
+      openStock({ symbol: params.get('symbol'), name: params.get('name') || params.get('symbol').slice(2), date: params.get('date') });
+      return;
+    }
     const linkedCase = archive.cases.find(item => item.symbol === params.get('symbol') && item.date === params.get('date'));
     showCase(linkedCase || selected || archive.cases[0]);
     renderCases();
