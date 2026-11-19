@@ -2621,7 +2621,10 @@ async function publicTencentQuotes(symbols, signal) {
     const row = line.split('~');
     const date = row[30]?.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
     const at = date ? Date.parse(date[1] + '-' + date[2] + '-' + date[3] + 'T' + date[4] + ':' + date[5] + ':' + date[6] + '+08:00') : NaN;
-    return lookup.has(ticker) ? [{ symbol: lookup.get(ticker), name: row[1], price: Number(row[3]), volume: Number(row[6]), at }] : [];
+    return lookup.has(ticker) ? [{
+      symbol: lookup.get(ticker), name: row[1], price: Number(row[3]), volume: Number(row[6]),
+      changePercent: row[32] ? Number(row[32]) : NaN, at
+    }] : [];
   });
 }
 
@@ -2673,6 +2676,7 @@ async function publicStockHistory(symbol, adjustment, limit, signal) {
 const endpoint = 'https://push2.eastmoney.com/api/qt/';
 const historyEndpoint = 'https://push2his.eastmoney.com/api/qt/stock/kline/get';
 const poolEndpoint = 'https://push2ex.eastmoney.com/';
+const sinaMarketEndpoint = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.';
 const shareMarkets = 'm:0 t:6,m:0 t:80,m:1 t:2,m:1 t:23,m:0 t:81 s:2048';
 const quoteGroups = {
   domestic: ['1.000001', '0.399001', '0.399006', '1.000300'],
@@ -2712,13 +2716,41 @@ async function getMarket(url, params) {
   return json.data;
 }
 
+async function withMarketBackup(label, primary, backup) {
+  try {
+    return await primary;
+  } catch (error) {
+    console.warn(label + ' · 东方财富读取失败，切换备用源', error);
+    return backup();
+  }
+}
+
 function refreshQuoteSnapshot() {
   if (market.quotePromise) return market.quotePromise;
   const ids = [...new Set(Object.values(quoteGroups).flat())];
-  market.quotePromise = getMarket(endpoint + 'ulist.np/get', {
+  let quotes;
+  const primary = getMarket(endpoint + 'ulist.np/get', {
     secids: ids.join(','), fields: 'f2,f3,f6,f12,f13,f14,f124', fltt: 2, invt: 2
   }).then(data => {
-    market.quotes = new Map(Object.values(data.diff).map(quote => [symbolOf(quote), quote]));
+    quotes = new Map(Object.values(data.diff || {}).map(quote => [symbolOf(quote), quote]));
+    if (!quoteGroups.domestic.every(id => quotes.get(id)?.f2 > 0 && Number.isFinite(quotes.get(id).f3))) {
+      throw new Error('A 股指数行情不完整');
+    }
+    return { quotes, source: '东方财富' };
+  });
+  market.quotePromise = withMarketBackup('指数快照', primary, async () => {
+    const rows = await publicTencentQuotes(quoteGroups.domestic);
+    const usable = rows.filter(row => row.price > 0 && Number.isFinite(row.changePercent) && Number.isFinite(row.at));
+    if (usable.length !== quoteGroups.domestic.length) throw new Error('腾讯指数行情不完整');
+    const snapshot = new Map(quotes || market.quotes);
+    for (const row of usable) {
+      const [f13, f12] = row.symbol.split('.');
+      snapshot.set(row.symbol, { f13, f12, f14: row.name, f2: row.price, f3: row.changePercent, f124: row.at / 1000 });
+    }
+    return { quotes: snapshot, source: '腾讯行情' };
+  }).then(({ quotes: snapshot, source }) => {
+    market.quotes = snapshot;
+    market.quoteSource = source;
     const average = ids => {
       const quotes = ids.map(id => market.quotes.get(id)).filter(quote =>
         Number.isFinite(quote?.f3) && quote.f124 > 0 && Date.now() - quote.f124 * 1000 <= 345600000);
@@ -2739,7 +2771,8 @@ function report(job, error) {
 }
 
 function track(job, promise, update) {
-  return promise.then(update, error => report(job, error)).finally(renderMarket);
+  delete market.errors[job];
+  return promise.then(update).catch(error => report(job, error)).finally(renderMarket);
 }
 
 function quoteTiles(ids) {
@@ -2752,31 +2785,73 @@ function quoteTiles(ids) {
   }).join('');
 }
 
-async function readBreadth() {
-  const params = { pz: 100, fid: 'f12', po: 0, fs: shareMarkets, fields: 'f3,f12,f13', fltt: 2, invt: 2 };
-  const first = await getMarket(endpoint + 'clist/get', { ...params, pn: 1 });
+async function readBreadthPages(total, readPage, source) {
+  if (!Number.isInteger(total) || total <= 0) throw new Error(source + '未返回 A 股总数');
   const shares = new Map();
-  const read = data => {
-    for (const row of Object.values(data.diff || [])) shares.set(symbolOf(row), row);
-  };
-  read(first);
-  const pages = Math.ceil(first.total / 100);
-  let failures = 0;
-  for (let start = 2; start <= pages; start += 8) {
+  const pages = Math.ceil(total / 100);
+  let failed = false;
+  for (let start = 1; start <= pages; start += 8) {
     const chunk = Array.from({ length: Math.min(8, pages - start + 1) }, (_, offset) => start + offset);
-    const results = await Promise.allSettled(chunk.map(pn => getMarket(endpoint + 'clist/get', { ...params, pn })));
+    const results = await Promise.allSettled(chunk.map(readPage));
     for (const item of results) {
-      if (item.status === 'fulfilled') read(item.value);
-      else failures++;
+      if (item.status === 'fulfilled') {
+        for (const [symbol, row] of item.value) shares.set(symbol, row);
+      } else {
+        failed = true;
+        console.warn(source + '涨跌分布分页失败', item.reason);
+      }
     }
+    if (!shares.size) throw new Error(source + '未返回涨跌分布');
+    if (source === '东方财富' && failed) break;
   }
-  return { shares, total: first.total, complete: failures === 0 && shares.size >= first.total };
+  return { shares, total, complete: !failed && shares.size === total, source };
+}
+
+async function readEastmoneyBreadth() {
+  const params = { pz: 100, fid: 'f12', po: 0, fs: shareMarkets, fields: 'f3,f12,f13', fltt: 2, invt: 2 };
+  const read = pn => getMarket(endpoint + 'clist/get', { ...params, pn });
+  const first = await read(1);
+  return readBreadthPages(first.total, async pn =>
+    Object.values((pn === 1 ? first : await read(pn)).diff || {}).map(row => [symbolOf(row), row]), '东方财富');
+}
+
+async function readSinaMarket(method, params) {
+  const url = new URL(sinaMarketEndpoint + method);
+  url.search = new URLSearchParams({ node: 'hs_a', ...params });
+  const response = await fetch(url, { signal: AbortSignal.timeout(6000), cache: 'no-store' });
+  if (!response.ok) throw new Error('新浪行情 HTTP ' + response.status);
+  return JSON.parse(new TextDecoder('gb18030').decode(await response.arrayBuffer()));
+}
+
+async function readBreadth() {
+  let primary;
+  return withMarketBackup('涨跌分布', readEastmoneyBreadth().then(data => {
+    primary = data;
+    if (!data.complete) throw new Error('东方财富涨跌分布不完整');
+    return data;
+  }), async () => {
+    try {
+      const total = Number(await readSinaMarket('getHQNodeStockCount'));
+      return await readBreadthPages(total, async page => {
+        const rows = await readSinaMarket('getHQNodeData', { page, num: 100, sort: 'symbol', asc: 1 });
+        if (!Array.isArray(rows)) throw new Error('新浪行情分页无效');
+        return rows.map(row => [row.symbol, { f3: Number(row.trade) > 0 ? row.changepercent : null }]);
+      }, '新浪财经');
+    } catch (error) {
+      if (!primary) throw error;
+      console.warn('新浪涨跌分布读取失败，显示东方财富已读取的数据', error);
+      return primary;
+    }
+  });
 }
 
 function dailyIndex(secid) {
   return getMarket(historyEndpoint, {
     secid, klt: 101, fqt: 0, end: 20500101, lmt: 8, fields1: 'f1,f2,f3,f4,f5,f6', fields2: 'f51,f52,f53,f54,f55,f56,f57'
-  }).then(data => data.klines.map(row => row.split(',')).map(row => ({ date: row[0], amount: Number(row[6]) })));
+  }).then(data => {
+    if (!data.klines?.length) throw new Error('东方财富未返回指数日线');
+    return data.klines.map(row => row.split(',')).map(row => ({ date: row[0], amount: Number(row[6]) }));
+  });
 }
 
 function indexMinutes(secid) {
@@ -2792,10 +2867,59 @@ function tradingMinute(time) {
   return Math.max(0, Math.min(240, clock <= 690 ? clock - 570 : clock - 660));
 }
 
+async function tencentIndexSessions(secid) {
+  const code = publicTicker(secid);
+  const response = await fetch('https://web.ifzq.gtimg.cn/appstock/app/day/query?code=' + code, {
+    signal: AbortSignal.timeout(6000), cache: 'no-store'
+  });
+  if (!response.ok) throw new Error('腾讯分时 HTTP ' + response.status);
+  const payload = await response.json();
+  const sessions = payload.data?.[code]?.data;
+  if (payload.code !== 0 || !Array.isArray(sessions)) throw new Error('腾讯未返回指数分时');
+  const days = sessions.map(session => {
+    const date = session.date.replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Array.isArray(session.data)) throw new Error('腾讯指数分时格式无效');
+    const amounts = new Map();
+    for (const line of session.data) {
+      const [clock, , , rawAmount] = line.trim().split(/\s+/);
+      const amount = Number(rawAmount);
+      if (!/^\d{2}[0-5]\d$/.test(clock) || !rawAmount || !Number.isFinite(amount) || amount < 0) continue;
+      if ((clock >= '0930' && clock <= '1130') || (clock >= '1301' && clock <= '1500')) {
+        amounts.set(clock.slice(0, 2) + ':' + clock.slice(2), amount);
+      }
+    }
+    return { date, amounts };
+  }).filter(day => day.amounts.size).sort((a, b) => b.date.localeCompare(a.date));
+  if (!days.length) throw new Error('腾讯指数分时为空');
+  return days;
+}
+
+function tencentTurnover(sh, sz) {
+  const common = sh.flatMap(day => {
+    const matching = sz.find(item => item.date === day.date);
+    return matching ? [[day, matching]] : [];
+  });
+  if (!common.length) throw new Error('腾讯沪深指数交易日未对齐');
+  const [[shToday, szToday], previous] = common;
+  const date = shToday.date;
+  const series = [...shToday.amounts].filter(([time]) => szToday.amounts.has(time))
+    .map(([time, amount]) => ({ t: tradingMinute(time), y: (amount + szToday.amounts.get(time)) / 1e8, date }))
+    .sort((a, b) => a.t - b.t);
+  if (!series.length) throw new Error('腾讯沪深分时未对齐');
+  const closing = previous?.map(day => day.amounts.get('15:00'));
+  const baseline = closing?.every(Number.isFinite) ? (closing[0] + closing[1]) / 1e8 : null;
+  return { series, date, baseline, source: '腾讯行情' };
+}
+
 function topicPool(kind, date) {
   return getMarket(poolEndpoint + ({ up: 'getTopicZTPool', failed: 'getTopicZBPool', down: 'getTopicDTPool' })[kind], {
     ut: '7eea3edcaed734bea9cbfc24409ed989', dpt: 'wz.ztzt', Pageindex: 0, pagesize: 300,
     sort: kind === 'down' ? 'fund:asc' : 'fbt:asc', date: date.replaceAll('-', '')
+  }).then(data => {
+    if (String(data.qdate) !== date.replaceAll('-', '') || !Array.isArray(data.pool)) {
+      throw new Error('东方财富未返回该交易日的股池');
+    }
+    return data;
   });
 }
 
@@ -2804,6 +2928,7 @@ async function readPools(date) {
   return Object.fromEntries(entries.map((item, i) => {
     const kind = ['up', 'failed', 'down'][i];
     if (item.status === 'rejected') report('pool-' + kind, item.reason);
+    else delete market.errors['pool-' + kind];
     return [kind, item.status === 'fulfilled' ? item.value : null];
   }));
 }
@@ -2816,14 +2941,15 @@ async function refreshMarket({ quotesOnly = false, forceBreadth = true } = {}) {
     button.disabled = true;
     button.textContent = '刷新中…';
   }
-  market.errors = {};
-  const daily = quotesOnly ? null : Promise.all([dailyIndex('1.000001'), dailyIndex('0.399001')]);
   const jobs = [
     track('quotes', refreshQuoteSnapshot()),
   ];
-  if (!quotesOnly) jobs.push(
-    track('turnover', Promise.all([daily, indexMinutes('1.000001'), indexMinutes('0.399001')]),
-      ([[sh, sz], shMinutes, szMinutes]) => {
+  if (!quotesOnly) {
+    const shDaily = dailyIndex('1.000001');
+    let tencentShanghai;
+    const shSessions = () => tencentShanghai ??= tencentIndexSessions('1.000001');
+    const turnover = Promise.all([shDaily, dailyIndex('0.399001'), indexMinutes('1.000001'), indexMinutes('0.399001')])
+      .then(([sh, sz, shMinutes, szMinutes]) => {
         const szByTime = new Map(szMinutes.map(row => [row[0], Number(row[6])]));
         let cumulative = 0;
         const series = shMinutes.filter(row => szByTime.has(row[0]) && Number.isFinite(Number(row[6])) && Number.isFinite(szByTime.get(row[0])))
@@ -2831,39 +2957,52 @@ async function refreshMarket({ quotesOnly = false, forceBreadth = true } = {}) {
             cumulative += Number(row[6]) + szByTime.get(row[0]);
             return { t: tradingMinute(row[0].slice(11)), y: cumulative / 1e8, date: row[0].slice(0, 10) };
           });
-        const date = series.at(-1)?.date;
+        if (!series.length) throw new Error('东方财富未返回对齐的沪深分时');
+        const date = series.at(-1).date;
         const previous = sh.filter(day => day.date < date).at(-1);
         const szPrevious = sz.find(day => day.date === previous?.date);
         const baseline = previous && szPrevious ? (previous.amount + szPrevious.amount) / 1e8 : null;
-        market.turnover = { series, date, baseline };
+        return { series, date, baseline, source: '东方财富' };
+      });
+    const tradingDates = withMarketBackup('交易日', shDaily.then(sh => ({
+      dates: sh.map(day => day.date).reverse().slice(0, 5), source: '东方财富'
+    })), async () => ({
+      dates: (await shSessions()).map(day => day.date), source: '腾讯行情'
+    }));
+    jobs.push(
+      track('turnover', withMarketBackup('沪深成交额', turnover, async () => {
+        const [sh, sz] = await Promise.all([shSessions(), tencentIndexSessions('0.399001')]);
+        return tencentTurnover(sh, sz);
+      }), data => { market.turnover = data; }),
+      track('flow', getMarket(endpoint + 'stock/fflow/kline/get', {
+        lmt: 0, klt: 1, fields1: 'f1,f2,f3,f7', fields2: 'f51,f52,f53,f54,f55,f56', secid: '1.000001', secid2: '0.399001'
+      }), data => {
+        market.flow = data.klines.map(row => row.split(',')).filter(row => Number.isFinite(Number(row[1])))
+          .map(row => ({ t: tradingMinute(row[0].slice(11)), y: Number(row[1]) / 1e8, date: row[0].slice(0, 10) }));
       }),
-    track('flow', getMarket(endpoint + 'stock/fflow/kline/get', {
-      lmt: 0, klt: 1, fields1: 'f1,f2,f3,f7', fields2: 'f51,f52,f53,f54,f55,f56', secid: '1.000001', secid2: '0.399001'
-    }), data => {
-      market.flow = data.klines.map(row => row.split(',')).filter(row => Number.isFinite(Number(row[1])))
-        .map(row => ({ t: tradingMinute(row[0].slice(11)), y: Number(row[1]) / 1e8, date: row[0].slice(0, 10) }));
-    }),
-    track('sectors', getMarket(endpoint + 'clist/get', {
-      pn: 1, pz: 30, fid: 'f62', po: 1, fs: 'm:90 t:2,m:90 t:3',
-      fields: 'f3,f6,f12,f14,f104,f105,f128,f140,f141,f136,f62', fltt: 2, invt: 2
-    }), data => { market.sectors = Object.values(data.diff || []); }),
-    track('pools', daily.then(async ([sh]) => {
-      const dates = sh.map(day => day.date).reverse().slice(0, 5);
-      const date = dates[0];
-      const [latest, previous] = await Promise.all([
-        readPools(date),
-        topicPool('up', dates[1]).catch(error => { report('previous-pool', error); return null; })
-      ]);
-      return { date, dates, latest, previous };
-    }), data => {
-      if (market.date !== data.date) market.pools.clear();
-      market.date = data.date;
-      market.dates = data.dates;
-      market.latest = data.latest;
-      market.pools.set(data.date, data.latest.up);
-      if (data.previous) market.pools.set(data.dates[1], data.previous);
-    })
-  );
+      track('sectors', getMarket(endpoint + 'clist/get', {
+        pn: 1, pz: 30, fid: 'f62', po: 1, fs: 'm:90 t:2,m:90 t:3',
+        fields: 'f3,f6,f12,f14,f104,f105,f128,f140,f141,f136,f62', fltt: 2, invt: 2
+      }), data => { market.sectors = Object.values(data.diff || []); }),
+      track('pools', tradingDates.then(async ({ dates, source }) => {
+        const date = dates[0];
+        delete market.errors['previous-pool'];
+        const [latest, previous] = await Promise.all([
+          readPools(date),
+          dates[1] ? topicPool('up', dates[1]).catch(error => { report('previous-pool', error); return null; }) : null
+        ]);
+        return { date, dates, latest, previous, source };
+      }), data => {
+        if (market.date !== data.date) market.pools.clear();
+        market.date = data.date;
+        market.dates = data.dates;
+        market.calendarSource = data.source;
+        market.latest = data.latest;
+        market.pools.set(data.date, data.latest.up);
+        if (data.previous) market.pools.set(data.dates[1], data.previous);
+      })
+    );
+  }
   if (!quotesOnly && (forceBreadth || !market.breadthCheckedAt || Date.now() - market.breadthCheckedAt >= 180000)) {
     market.breadthCheckedAt = Date.now();
     jobs.push(track('breadth', readBreadth(), data => { market.breadth = data; market.breadthUpdatedAt = Date.now(); }));
@@ -2886,7 +3025,7 @@ async function refreshMarket({ quotesOnly = false, forceBreadth = true } = {}) {
 function renderBreadth() {
   const stats = market.breadth;
   if (!stats) {
-    $('breadthContent').textContent = market.errors.breadth || '正在统计涨跌分布';
+    $('breadthContent').textContent = market.errors.breadth ? '涨跌分布暂不可用' : '正在统计涨跌分布';
     return null;
   }
   const values = [...stats.shares.values()].map(row => row.f3).filter(Number.isFinite);
@@ -2904,6 +3043,7 @@ function renderBreadth() {
   $('breadthContent').className = '';
   $('breadthCoverage').textContent = stats.complete ? '沪深京 · ' + values.length.toLocaleString('zh-CN') + ' 只股票' :
     '部分数据 · ' + stats.shares.size + ' / ' + stats.total;
+  $('breadthCoverage').textContent += ' · ' + stats.source;
   $('breadthCoverage').textContent += market.breadthUpdatedAt ? ' · ' + shortTime.format(market.breadthUpdatedAt) : '';
   $('breadthContent').innerHTML = '<div class="breadth-totals"><span>上涨 <strong class="up">' + rising +
     '</strong></span><span>下跌 <strong class="down">' + falling + '</strong></span><span>平盘 <strong>' + flat + '</strong></span></div>' +
@@ -2952,11 +3092,13 @@ function metric(label, value, color = '') {
 
 function renderMarket() {
   $('domesticQuotes').innerHTML = quoteTiles(quoteGroups.domestic);
-  $('marketDate').textContent = market.date ? market.date + ' 交易日 · 东方财富行情' :
+  $('marketDate').textContent = market.date ? market.date + ' 交易日 · ' + market.calendarSource :
     market.errors.pools ? '交易日暂不可用' : '正在读取交易日';
   $('marketAutoStatus').textContent = (stockMarketOpen() ? '每分钟自动刷新' : '休市 · 自动刷新暂停') +
     (market.checkedAt ? ' · 检查于 ' + shortTime.format(market.checkedAt) : '') +
-    (Object.keys(market.errors).length ? ' · 部分数据读取失败' : '');
+    (market.quoteSource === '腾讯行情' ? ' · 指数使用备用源（腾讯行情）' : '') +
+    (Object.keys(market.errors).some(job => job !== 'sectors' && job !== 'previous-pool' && !job.startsWith('history-')) ?
+      ' · 部分数据读取失败' : '');
   const breadth = renderBreadth();
   market.indicators = marketFactors(breadth);
   market.heatState = renderSentiment(market.indicators);
@@ -2969,14 +3111,14 @@ function renderIntraday() {
   const turnover = market.turnover;
   const volumeSeries = turnover?.series || [];
   const last = volumeSeries.at(-1);
-  $('turnoverDate').textContent = turnover?.date || '';
+  $('turnoverDate').textContent = turnover ? turnover.date + ' · ' + turnover.source : '';
   $('turnoverSummary').innerHTML = metric('累计成交额', last ? money(last.y * 1e8) : '—') +
     metric('上一交易日', Number.isFinite(turnover?.baseline) ? money(turnover.baseline * 1e8) : '—') +
     (market.indicators.estimated ? metric('线性估量', money(market.indicators.estimated * 1e8), tone(market.indicators.growth)) :
       metric('较上一交易日', pct(market.indicators.growth), tone(market.indicators.growth)));
   $('turnoverNote').textContent = market.indicators.estimated ? '估量 = 累计成交额 × 240 ÷ 已交易分钟，随盘中量能变化。' : '沪深指数成交额合计。虚线为上一交易日收盘成交额。';
   $('turnoverEmpty').hidden = Boolean(last);
-  $('turnoverEmpty').textContent = market.errors.turnover || '正在读取分时成交额';
+  $('turnoverEmpty').textContent = market.errors.turnover ? '分时成交额暂不可用' : '正在读取分时成交额';
   plotMarket('turnoverChart', [{ data: volumeSeries, color: colors.blue, fill: true }], {
     baseline: turnover?.baseline, unit: '亿', includeZero: true
   });
@@ -2984,7 +3126,6 @@ function renderIntraday() {
   const pools = market.latest;
   const up = pools?.up?.tc, failed = pools?.failed?.tc, down = pools?.down?.tc;
   const rate = market.indicators.sealed === null ? null : 100 - market.indicators.sealed;
-  $('limitsDate').textContent = market.date || '';
   $('limitsSummary').innerHTML = metric('涨停', up ?? '—', 'up') + metric('炸板', failed ?? '—') +
     metric('跌停', down ?? '—', 'down') + metric('炸板率', rate === null ? '—' : rate.toFixed(1) + '%');
   const sets = [
@@ -2992,8 +3133,9 @@ function renderIntraday() {
     { pool: pools?.failed, field: 'fbt', color: colors.amber },
     { pool: pools?.down, field: 'lbt', color: colors.down }
   ].filter(item => item.pool);
+  $('limitsDate').textContent = sets.length ? market.date + ' · 东方财富' : market.date || '';
   $('limitsEmpty').hidden = sets.length > 0;
-  $('limitsEmpty').textContent = market.errors.pools || (pools ? '涨跌停股池暂不可用' : '正在读取涨跌停股池');
+  $('limitsEmpty').textContent = (market.errors.pools || pools) ? '涨跌停股池暂不可用' : '正在读取涨跌停股池';
   const latestMinute = last && last.date === market.date ? last.t : 240;
   const countSeries = sets.map(({ pool, field, color }) => {
     const hits = pool.pool.filter(row => Number.isFinite(row[field]) && row[field] > 0).map(row => {
@@ -3012,7 +3154,7 @@ function renderIntraday() {
   $('flowDate').textContent = flowLast?.date || '';
   $('flowSummary').innerHTML = metric('主力净流入', flowLast ? signed(flowLast.y) + ' 亿' : '—', tone(flowLast?.y));
   $('flowEmpty').hidden = Boolean(flowLast);
-  $('flowEmpty').textContent = market.errors.flow || '正在读取主力资金';
+  $('flowEmpty').textContent = market.errors.flow ? '东方财富主力资金暂不可用' : '正在读取主力资金';
   plotMarket('flowChart', [{ data: flow, color: flowLast?.y < 0 ? colors.down : colors.up, fill: true }], { baseline: 0, unit: '亿' });
 }
 
