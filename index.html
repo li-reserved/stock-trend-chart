@@ -2676,7 +2676,7 @@ async function publicStockHistory(symbol, adjustment, limit, signal) {
 const endpoint = 'https://push2.eastmoney.com/api/qt/';
 const historyEndpoint = 'https://push2his.eastmoney.com/api/qt/stock/kline/get';
 const poolEndpoint = 'https://push2ex.eastmoney.com/';
-const sinaMarketEndpoint = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/json_v2.php/Market_Center.';
+const sinaMarketEndpoint = 'https://vip.stock.finance.sina.com.cn/quotes_service/api/jsonp.php/var%20marketBreadth=/Market_Center.';
 const shareMarkets = 'm:0 t:6,m:0 t:80,m:1 t:2,m:1 t:23,m:0 t:81 s:2048';
 const quoteGroups = {
   domestic: ['1.000001', '0.399001', '0.399006', '1.000300'],
@@ -2820,7 +2820,11 @@ async function readSinaMarket(method, params) {
   url.search = new URLSearchParams({ node: 'hs_a', ...params });
   const response = await fetch(url, { signal: AbortSignal.timeout(6000), cache: 'no-store' });
   if (!response.ok) throw new Error('新浪行情 HTTP ' + response.status);
-  return JSON.parse(new TextDecoder('gb18030').decode(await response.arrayBuffer()));
+  const body = new TextDecoder('gb18030').decode(await response.arrayBuffer()).trimEnd();
+  const assignment = 'var marketBreadth=(';
+  const start = body.indexOf(assignment);
+  if (start === -1 || !body.endsWith(');')) throw new Error('新浪行情响应格式无效');
+  return JSON.parse(body.slice(start + assignment.length, -2));
 }
 
 async function readBreadth() {
