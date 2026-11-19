@@ -107,6 +107,15 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
 .mini-plot{height:150px;position:relative;margin-top:6px}
 .mini-plot canvas{width:100%;height:100%;display:block}
 .mini-plot .dash-empty{position:absolute;inset:0;display:grid;place-content:center}
+.sector-flow-card{grid-column:1/-1}
+.sector-flow-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 28px}
+.sector-flow-group h4{font-size:12px;margin:0 0 6px}
+.sector-flow-group ol{list-style:none;margin:0;padding:0}
+.sector-flow-row{display:grid;grid-template-columns:minmax(5em,1fr) minmax(32px,2fr) 8em;gap:8px;align-items:center;min-height:27px;font-size:12px}
+.sector-flow-row strong{text-align:right;white-space:nowrap}
+.sector-flow-track{display:block;height:7px;background:#1e2b3f;border-radius:3px}
+.sector-flow-track i{display:block;width:var(--flow-width);height:100%;background:currentColor;border-radius:inherit}
+@media(max-width:700px){.sector-flow-columns{grid-template-columns:1fr}}
 .event-preview,.event-items{display:grid;gap:0}
 .event-row{display:grid;grid-template-columns:94px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #28384b}
 .event-row:first-child{border-top:0}
@@ -271,11 +280,16 @@ body:has(.fullscreen-in-page)>header,main:has(.fullscreen-in-page)>:not(.layout)
         <div class="mini-plot"><canvas id="limitsChart" aria-label="股池触板时间累计分布"></canvas><p id="limitsEmpty" class="dash-empty">正在读取涨跌停股池</p></div>
         <p class="dash-note">按当前股池统计。涨停和炸板使用首次触板时间，跌停使用最后封板时间。</p>
       </article>
+      <article class="dash-card sector-flow-card" aria-labelledby="sectorFlowTitle">
+        <div class="dash-card-head"><h3 id="sectorFlowTitle">行业板块资金流向</h3><span id="sectorFlowTime" class="dash-muted"></span></div>
+        <div id="sectorFlowContent"><p class="dash-empty">正在读取行业资金</p></div>
+        <p id="sectorFlowNote" class="dash-note" hidden></p>
+      </article>
       <article class="dash-card">
         <div class="dash-card-head"><h3>主力资金净流入</h3><span id="flowDate" class="dash-muted"></span></div>
         <div id="flowSummary" class="metric-row"></div>
         <div class="mini-plot"><canvas id="flowChart" aria-label="沪深主力净流入分时图"></canvas><p id="flowEmpty" class="dash-empty">正在读取主力资金</p></div>
-        <p class="dash-note">按东方财富沪深主力资金统计口径。</p>
+        <p id="flowNote" class="dash-note" hidden></p>
       </article>
       <article class="dash-card">
         <div class="dash-card-head"><h3>近期事件</h3><button type="button" class="dash-text-button" data-open-view="events">查看日程 →</button></div>
@@ -2915,6 +2929,87 @@ function tencentTurnover(sh, sz) {
   return { series, date, baseline, source: '腾讯行情' };
 }
 
+let sinaFundsRequest = 0;
+function readSinaFunds(base, method, params) {
+  return new Promise((resolve, reject) => {
+    const callback = '__marketFunds' + ++sinaFundsRequest;
+    const url = new URL(base + callback + '/' + method);
+    url.search = new URLSearchParams({ ...params, random: Date.now() });
+    const script = document.createElement('script');
+    const timer = setTimeout(() => finish(new Error('新浪资金接口超时')), 6000);
+    function finish(error, payload) {
+      clearTimeout(timer);
+      delete window[callback];
+      script.remove();
+      if (error) reject(error);
+      else resolve(payload);
+    }
+    window[callback] = payload => finish(null, payload);
+    script.charset = 'gbk';
+    script.onerror = () => finish(new Error('新浪资金接口无法连接'));
+    script.onload = () => {
+      if (window[callback]) finish(new Error('新浪资金接口未回调'));
+    };
+    script.src = url.href;
+    document.head.append(script);
+  });
+}
+
+function mainFlowSnapshot(rows, source, scope) {
+  const points = new Map();
+  for (const [stamp, amount] of rows) {
+    const [date, time] = stamp.split(' ');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:[0-5]\d$/.test(time) ||
+        !((time >= '09:30' && time <= '11:30') || (time >= '13:00' && time <= '15:00')) ||
+        !Number.isFinite(amount)) continue;
+    points.set(stamp, { stamp, t: tradingMinute(time), y: amount / 1e8 });
+  }
+  const series = [...points.values()].sort((a, b) => a.stamp.localeCompare(b.stamp));
+  if (!series.length) throw new Error(source + '未返回有效主力资金分时');
+  return { series, source, scope };
+}
+
+async function readEastmoneyMainFlow() {
+  const data = await getMarket(endpoint + 'stock/fflow/kline/get', {
+    lmt: 0, klt: 1, fields1: 'f1,f2,f3,f7', fields2: 'f51,f52,f53,f54,f55,f56', secid: '1.000001', secid2: '0.399001'
+  });
+  if (!Array.isArray(data.klines)) throw new Error('东方财富未返回主力资金分时');
+  return mainFlowSnapshot(data.klines.map(row => {
+    const [stamp, amount] = row.split(',');
+    return [stamp, amount ? Number(amount) : NaN];
+  }), '东方财富', '按东方财富沪深主力资金口径统计。');
+}
+
+async function readSinaMainFlow() {
+  const payload = await readSinaFunds('https://stock.sina.com.cn/stock/api/jsonp.php/', 'TouziService.getMinuteFlow');
+  if (typeof payload !== 'string') throw new Error('新浪未返回沪深资金分时');
+  const [date, ...rows] = payload.split('|');
+  return mainFlowSnapshot(rows.map(row => {
+    const [time, superOrder, bigOrder] = row.split(',');
+    return [date + ' ' + time, superOrder && bigOrder ? Number(superOrder) + Number(bigOrder) : NaN];
+  }), '新浪财经', '备用源 · 按新浪沪深合计的特大单与大单净额统计。');
+}
+
+async function readEastmoneyIndustryFlow() {
+  const pages = await Promise.all([1, 0].map(po => getMarket(endpoint + 'clist/get', {
+    pn: 1, pz: 12, fid: 'f62', po, fs: 'm:90 t:2', fields: 'f12,f14,f62', fltt: 2, invt: 2
+  })));
+  const rows = pages.map(page => Object.values(page.diff || {}).filter(row => row.f14 && Number.isFinite(row.f62)));
+  if (rows.some(page => !page.length)) throw new Error('东方财富行业资金排行不完整');
+  const industries = new Map(rows.flat().map(row => [row.f12, { name: row.f14, amount: row.f62 }]));
+  return { rows: [...industries.values()], source: '东方财富', scope: '主力资金净额' };
+}
+
+async function readSinaIndustryFlow() {
+  const payload = await readSinaFunds('https://vip.stock.finance.sina.com.cn/quotes_service/api/jsonp_v2.php/',
+    'MoneyFlow.ssl_bkzj_bk', { fenlei: 0, page: 1, num: 100, sort: 'netamount', asc: 0 });
+  if (!Array.isArray(payload)) throw new Error('新浪未返回行业资金排行');
+  const rows = payload.filter(row => row.name && row.netamount && Number.isFinite(Number(row.netamount)))
+    .map(row => ({ name: row.name, amount: Number(row.netamount) }));
+  if (!rows.length) throw new Error('新浪行业资金排行为空');
+  return { rows, source: '新浪财经（备用）', scope: '全部成交资金净额' };
+}
+
 function topicPool(kind, date) {
   return getMarket(poolEndpoint + ({ up: 'getTopicZTPool', failed: 'getTopicZBPool', down: 'getTopicDTPool' })[kind], {
     ut: '7eea3edcaed734bea9cbfc24409ed989', dpt: 'wz.ztzt', Pageindex: 0, pagesize: 300,
@@ -2978,12 +3073,10 @@ async function refreshMarket({ quotesOnly = false, forceBreadth = true } = {}) {
         const [sh, sz] = await Promise.all([shSessions(), tencentIndexSessions('0.399001')]);
         return tencentTurnover(sh, sz);
       }), data => { market.turnover = data; }),
-      track('flow', getMarket(endpoint + 'stock/fflow/kline/get', {
-        lmt: 0, klt: 1, fields1: 'f1,f2,f3,f7', fields2: 'f51,f52,f53,f54,f55,f56', secid: '1.000001', secid2: '0.399001'
-      }), data => {
-        market.flow = data.klines.map(row => row.split(',')).filter(row => Number.isFinite(Number(row[1])))
-          .map(row => ({ t: tradingMinute(row[0].slice(11)), y: Number(row[1]) / 1e8, date: row[0].slice(0, 10) }));
-      }),
+      track('flow', withMarketBackup('主力资金分时', readEastmoneyMainFlow(), readSinaMainFlow),
+        data => { market.flow = data; }),
+      track('industry-flow', withMarketBackup('行业资金流向', readEastmoneyIndustryFlow(), readSinaIndustryFlow),
+        data => { market.industryFlow = { ...data, readAt: Date.now() }; }),
       track('sectors', getMarket(endpoint + 'clist/get', {
         pn: 1, pz: 30, fid: 'f62', po: 1, fs: 'm:90 t:2,m:90 t:3',
         fields: 'f3,f6,f12,f14,f104,f105,f128,f140,f141,f136,f62', fltt: 2, invt: 2
@@ -3107,6 +3200,7 @@ function renderMarket() {
   market.indicators = marketFactors(breadth);
   market.heatState = renderSentiment(market.indicators);
   renderIntraday();
+  renderIndustryFlow();
   if (market.view === 'hotspots') renderHotspots();
   if (market.view === 'global') renderGlobal();
 }
@@ -3153,13 +3247,40 @@ function renderIntraday() {
   });
   plotMarket('limitsChart', countSeries, { includeZero: true, unit: '家' });
 
-  const flow = market.flow || [];
+  const flow = market.flow?.series || [];
   const flowLast = flow.at(-1);
-  $('flowDate').textContent = flowLast?.date || '';
+  $('flowDate').textContent = flowLast ? flowLast.stamp + ' · ' + market.flow.source : '';
   $('flowSummary').innerHTML = metric('主力净流入', flowLast ? signed(flowLast.y) + ' 亿' : '—', tone(flowLast?.y));
   $('flowEmpty').hidden = Boolean(flowLast);
-  $('flowEmpty').textContent = market.errors.flow ? '东方财富主力资金暂不可用' : '正在读取主力资金';
+  $('flowEmpty').textContent = market.errors.flow ? '主源和备用源均暂不可用' : '正在读取主力资金';
+  $('flowNote').hidden = !flowLast;
+  $('flowNote').textContent = flowLast ? market.flow.scope + (market.errors.flow ? ' 更新失败，保留上次行情。' : '') : '';
   plotMarket('flowChart', [{ data: flow, color: flowLast?.y < 0 ? colors.down : colors.up, fill: true }], { baseline: 0, unit: '亿' });
+}
+
+function renderIndustryFlow() {
+  const snapshot = market.industryFlow;
+  const failed = Boolean(market.errors['industry-flow']);
+  $('sectorFlowNote').hidden = !snapshot;
+  if (!snapshot) {
+    $('sectorFlowContent').innerHTML = '<p class="dash-empty">' + (failed ? '行业资金暂不可用' : '正在读取行业资金') + '</p>';
+    return;
+  }
+  $('sectorFlowTime').textContent = snapshot.source + ' · ' + snapshot.scope + ' · ' + dateTime.format(snapshot.readAt) + ' 读取' +
+    (failed ? ' · 更新失败' : '');
+  $('sectorFlowNote').textContent = '流入和流出各显示前 8 个行业，柱长共用同一刻度。';
+  const ordered = [...snapshot.rows].sort((a, b) => b.amount - a.amount);
+  const inflow = ordered.filter(row => row.amount > 0).slice(0, 8);
+  const outflow = ordered.filter(row => row.amount < 0).reverse().slice(0, 8);
+  const scale = Math.max(1, ...snapshot.rows.map(row => Math.abs(row.amount)));
+  const group = (title, style, rows) => '<section class="sector-flow-group"><h4 class="' + style + '">' + title + '</h4>' +
+    (rows.length ? '<ol role="list">' + rows.map(row => '<li class="sector-flow-row"><span>' + esc(row.name) +
+      '</span><span class="sector-flow-track ' + style + '" aria-hidden="true"><i style="--flow-width:' +
+      (Math.abs(row.amount) / scale * 100).toFixed(2) + '%"></i></span><strong class="mono ' + style + '">' +
+      signed(row.amount / 1e8) + ' 亿</strong></li>').join('') + '</ol>' :
+      '<p class="dash-empty">暂无' + title + '行业</p>') + '</section>';
+  $('sectorFlowContent').innerHTML = '<div class="sector-flow-columns">' +
+    group('净流入', 'up', inflow) + group('净流出', 'down', outflow) + '</div>';
 }
 
 function plotMarket(id, series, { baseline, unit, includeZero }) {
